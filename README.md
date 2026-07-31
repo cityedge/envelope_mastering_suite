@@ -1,8 +1,8 @@
-# Envelope Mastering Suite v1.1.0
+# Envelope Mastering Suite v1.1.1
 
 Envelope Mastering Suite（EMS）は、SunoなどのAI生成音源を主対象とする、ローカル動作の単一HTMLマスタリングアプリです。音源をサーバーへ送信せず、ブラウザ内で解析、5段のDSP、比較試聴、WAV書き出し、バッチ処理まで完結します。
 
-v1.1.0では、v1.0.0の4段マスタリングへ、正常な音を守ることを優先した「適応型デノイズ」を前処理段として追加しています。旧製品 Music Envelope Leveler（MEL）のレベリング技術を中核に、Tonal Envelope Matcher（TEM）由来のトーンEQ、適応型マスタリングコンプレッサー、3帯域リバーブを統合した構成は維持しています。
+v1.1.1は、v1.1.0で追加した「適応型デノイズ」を含む5段マスタリング構成を維持する修正リリースです。デノイズの段別試聴は他の試聴・再補正開始時に確実に停止し、詳細グラフは非表示状態での描画を避けて表示後に安定して描画します。旧製品 Music Envelope Leveler（MEL）のレベリング技術を中核に、Tonal Envelope Matcher（TEM）由来のトーンEQ、適応型マスタリングコンプレッサー、3帯域リバーブを統合しています。
 
 ## 処理チェーン
 

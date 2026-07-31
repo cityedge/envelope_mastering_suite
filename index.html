@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envelope Mastering Suite v1.1.0</title>
+<title>Envelope Mastering Suite v1.1.1</title>
 <style>
 :root{--bg:#0f1117;--panel:#171b24;--panel2:#202633;--text:#e8ebf2;--muted:#a9b1c3;--accent:#77a7ff;--after:#8ee6c8;--gain:#ffd27a;--rawgain:#b9c4d8;--bad:#ff7e82;--up:#61d790;--line:#333b4d;--button:#2a67d8;--button2:#3a4255;--button3:#23845f;--tab:#111827;}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at top left,#1d2944 0,#0f1117 34rem);line-height:1.55}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);background:rgba(15,17,23,.84);position:sticky;top:0;z-index:5;backdrop-filter:blur(10px)}h1{margin:0 0 6px;font-size:24px;font-weight:720;letter-spacing:.02em}.header-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.lang-box{display:flex;gap:8px;align-items:center;white-space:nowrap;color:var(--muted);font-size:13px}.lang-box select{width:auto;min-width:130px;padding:7px 9px}.sub{color:var(--muted);font-size:14px;max-width:1120px}main{max-width:1400px;margin:0 auto;padding:18px}.grid{display:grid;grid-template-columns:470px 1fr;gap:18px;align-items:stretch}.grid>.card{height:calc(100vh - 126px);scrollbar-gutter:stable;overscroll-behavior:contain}@media(max-width:1100px){.grid{grid-template-columns:1fr}.grid>.card{height:auto;max-height:none;overflow:visible}header{position:static}.header-top{flex-direction:column}.lang-box{align-self:flex-start}}
@@ -67,7 +67,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>Envelope Mastering Suite <span class="small">v1.1.0</span></h1>
+      <h1>Envelope Mastering Suite <span class="small">v1.1.1</span></h1>
       <div class="sub">適応型デノイズ、トーンEQ、短期ピーク包絡の補正、適応型コンプレッサー、マルチバンド・リバーブを一つの処理チェーンに統合し、音楽音源を公開用に整えるローカルHTMLアプリです。</div>
     </div>
     <div class="lang-box">
@@ -593,7 +593,7 @@
 <script>
 
 const APP_NAME='Envelope Mastering Suite';
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.1.1';
 const I18N_EN = {
   "短期ピーク包絡を目標レベルへ寄せるための基準カーブを作成し、トゲ除去・平滑化・飛び出し圧縮で実用的な補正カーブに整えるローカルHTMLアプリです。": "A local HTML app that creates a reference curve to bring short-term peak envelopes toward a target level, then shapes it with despiking, smoothing, and overrun compression.",
   "表示言語を切り替えます。ログは現在のまま保持されます。": "Switch the display language. Logs are kept as-is.",
@@ -5960,12 +5960,16 @@ function v600DenoiseTimelineModel(analysis){
   const impulse=analysis?.impulse||{},burst=analysis?.microBurst||{},duration=Math.max(.001,state?.stages?.denoiseInput?.duration||state?.raw?.duration||1),events=[...(impulse.displayEvents||[]).map(event=>({...event,type:'click'})),...(burst.displayEvents||[]).map(event=>({...event,type:'burst'}))];
   return {duration,events};
 }
+function v600DenoiseChartsVisible(){
+  return [els.denoiseTimelineCanvas,els.denoiseBandCanvas,els.denoiseReductionCanvas].every(canvas=>canvas&&canvas.clientWidth>=64&&canvas.clientHeight>=64);
+}
 function v600DrawDenoise(){
   const analysis=v510DenoiseAnalysis(),empty=v510DenoiseText('デノイズを有効にして補正処理を実施してください。','Enable denoise and run processing.');
   if(els.denoiseFlowSummary)els.denoiseFlowSummary.innerHTML=v510DenoiseSummaryHtml(analysis);const left=document.getElementById('denoiseLeftSummary');if(left)left.innerHTML=v510DenoiseSummaryHtml(analysis);
+  if(!v600DenoiseChartsVisible())return;
   v550RefreshDenoiseChartExplanations();v560RefreshDenoiseTimelineExplanation();
   if(!analysis){for(const canvas of[els.denoiseTimelineCanvas,els.denoiseBandCanvas,els.denoiseReductionCanvas])suiteEmptyChart(canvas,empty);if(els.denoiseMetricsGrid)els.denoiseMetricsGrid.innerHTML='';v560DrawDenoiseTimelineCursor();return;}
-  const spectral=analysis.spectral||{},timelineModel=v600DenoiseTimelineModel(analysis),{duration,events}=timelineModel;
+  const spectral=analysis.spectral||{},burst=analysis.microBurst||{},sampleRate=Math.max(1,state?.stages?.denoiseInput?.sampleRate||state?.raw?.sampleRate||48000),timelineModel=v600DenoiseTimelineModel(analysis),{duration,events}=timelineModel;
   if(events.length){const timeline=suiteChartFrame(els.denoiseTimelineCanvas,-.25,1,v510DenoiseText('候補スコア','Candidate score'),1),{ctx,pad,pw,dpr}=timeline,zero=timeline.y(0);ctx.save();ctx.strokeStyle='#aeb8ca';ctx.lineWidth=Math.max(1,1.25*dpr);ctx.beginPath();ctx.moveTo(pad.l,zero);ctx.lineTo(pad.l+pw,zero);ctx.stroke();ctx.restore();for(const event of events){const x=pad.l+pw*clamp((event.timeSec||0)/duration,0,1),repaired=event.repairStatus==='repaired',score=clamp(event.confidence||event.score||0,0,1);ctx.fillStyle=event.type==='burst'?(repaired?'#ff79c6':'#ffba6b'):(repaired?'#62e6c6':'#ffba6b');ctx.fillRect(x-Math.max(1,dpr),timeline.y(score),Math.max(2,2*dpr),Math.max(0,zero-timeline.y(score)));}const visibleBurstIds=new Set((burst.displayEvents||[]).filter(event=>event.repairStatus==='repaired').map(event=>event.id)),tails=new Map();for(const region of burst.repairedRegions||[]){if(!(Number(region.tailExtensionMs)>0)||!visibleBurstIds.has(region.eventId))continue;const start=(Number(region.sourceStartSample)||0)/sampleRate-(Number(region.leftTailMs)||0)/1000,end=(Number(region.sourceEndSample)||0)/sampleRate+(Number(region.rightTailMs)||0)/1000,previous=tails.get(region.eventId);tails.set(region.eventId,previous?{start:Math.min(previous.start,start),end:Math.max(previous.end,end)}:{start,end});}ctx.save();ctx.strokeStyle='#9b8cff';ctx.lineWidth=Math.max(1,dpr);ctx.lineCap='butt';const tailY=timeline.y(-.13);for(const tail of tails.values()){const x1=pad.l+pw*clamp(tail.start/duration,0,1),x2=pad.l+pw*clamp(tail.end/duration,0,1);ctx.beginPath();ctx.moveTo(x1,tailY);ctx.lineTo(Math.max(x1+Math.max(1,dpr),x2),tailY);ctx.stroke();}ctx.restore();v560DrawDenoiseTimeTicks(duration);}else suiteEmptyChart(els.denoiseTimelineCanvas,v510DenoiseText('クリック／Micro-burst候補は検出されませんでした。','No click or micro-burst candidates detected.'));
   v550DrawDenoiseBandBars(spectral);const envelope=spectral.displayReductionEnvelope||[];if(envelope.length){const maximum=Math.max(1,Math.ceil(Math.max(Number(spectral.maxReductionDb)||0,...envelope.map(item=>Number(item.reductionDb)||0))*2)/2),frame=suiteChartFrame(els.denoiseReductionCanvas,0,maximum,'dB',1);suitePath(frame,envelope.map(item=>item.reductionDb||0),'#ffcf70',1.5);}else suiteEmptyChart(els.denoiseReductionCanvas,v510DenoiseText('Spectralリダクションは適用されませんでした。','No spectral reduction was applied.'));
   v600DenoiseDrawMetrics(analysis);v560DrawDenoiseTimelineCursor();
@@ -5976,6 +5980,29 @@ function v600DenoiseUpdateLanguage(){
   setControl('tailSpan','最大追跡時間（前後各）','Maximum tracking span (each side)');setControl('localizedSpectralEnabled','局所スペクトル修復を使用','Use localized spectral repair');setControl('localizedSpectralSensitivity','局所修復感度','Localized repair sensitivity');setControl('localizedSpectralMinHz','局所修復開始周波数','Localized repair start frequency');setControl('localizedSpectralReduction','局所修復最大抑制','Maximum localized reduction');
   v550RefreshDenoiseChartExplanations();v560RefreshDenoiseTimelineExplanation();v600DenoiseSyncUi();v510DenoiseAuditionUpdateUi();v560DrawDenoiseTimelineCursor();
 }
+let v600DenoisePlaybackEpoch=0;
+function v600CancelDenoiseAudition(keep=true){
+  v600DenoisePlaybackEpoch++;
+  const source=v510DenoiseAudition?.source,ctx=abPreview?.ctx;
+  if(source&&ctx)try{source.stop(ctx.currentTime+.016);}catch(_){}
+  v510DenoiseStop(keep);
+}
+function v600ScheduleDenoiseDraw(){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(v600DenoiseChartsVisible())v510DrawDenoise();}));
+}
+const _v600DenoiseStart=v510DenoiseStart;
+v510DenoiseStart=async function(mode=v510DenoiseAudition.mode){
+  const epoch=v600DenoisePlaybackEpoch;await _v600DenoiseStart(mode);
+  if(epoch!==v600DenoisePlaybackEpoch&&v510DenoiseAudition.playing)v510DenoiseStop(false);
+};
+const _v600StartABPreview=startABPreview;
+startABPreview=async function(...args){v600CancelDenoiseAudition(true);return _v600StartABPreview(...args);};
+const _v600SuiteStartStageAudition=suiteStartStageAudition;
+suiteStartStageAudition=async function(...args){v600CancelDenoiseAudition(true);return _v600SuiteStartStageAudition(...args);};
+const _v600RunShapeAndPreview=runShapeAndPreview;
+runShapeAndPreview=async function(...args){if(!isProcessingBusy()&&state?.raw)v600CancelDenoiseAudition(false);return _v600RunShapeAndPreview(...args);};
+const _v600SuiteActivateRightTab=suiteActivateRightTab;
+suiteActivateRightTab=function(name){if(name!=='denoise')v600CancelDenoiseAudition(true);const result=_v600SuiteActivateRightTab(name);if(name==='denoise')v600ScheduleDenoiseDraw();return result;};
 v510DenoiseSyncUi=v600DenoiseSyncUi;
 v510DrawDenoise=v600DrawDenoise;
 v510DenoiseUpdateLanguage=v600DenoiseUpdateLanguage;
