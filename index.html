@@ -6003,6 +6003,14 @@ const _v600RunShapeAndPreview=runShapeAndPreview;
 runShapeAndPreview=async function(...args){if(!isProcessingBusy()&&state?.raw)v600CancelDenoiseAudition(false);return _v600RunShapeAndPreview(...args);};
 const _v600SuiteActivateRightTab=suiteActivateRightTab;
 suiteActivateRightTab=function(name){if(name!=='denoise')v600CancelDenoiseAudition(true);const result=_v600SuiteActivateRightTab(name);if(name==='denoise')v600ScheduleDenoiseDraw();return result;};
+/* ===== Envelope Mastering Suite v1.1.1: clear compressor review on new input ===== */
+const _v611LoadFile=loadFile;
+loadFile=async function(file){
+  // Compressor charts fall back to this cache while a processed result exists.
+  // A newly selected input must never inherit the previous track's analysis.
+  compressorLastStage={input:null,output:null,analysis:null};
+  return _v611LoadFile(file);
+};
 v510DenoiseSyncUi=v600DenoiseSyncUi;
 v510DrawDenoise=v600DrawDenoise;
 v510DenoiseUpdateLanguage=v600DenoiseUpdateLanguage;
