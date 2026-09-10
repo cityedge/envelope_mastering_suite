@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envelope Mastering Suite v1.1.1</title>
+<title>Envelope Mastering Suite v1.2.0</title>
 <style>
 :root{--bg:#0f1117;--panel:#171b24;--panel2:#202633;--text:#e8ebf2;--muted:#a9b1c3;--accent:#77a7ff;--after:#8ee6c8;--gain:#ffd27a;--rawgain:#b9c4d8;--bad:#ff7e82;--up:#61d790;--line:#333b4d;--button:#2a67d8;--button2:#3a4255;--button3:#23845f;--tab:#111827;}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at top left,#1d2944 0,#0f1117 34rem);line-height:1.55}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);background:rgba(15,17,23,.84);position:sticky;top:0;z-index:5;backdrop-filter:blur(10px)}h1{margin:0 0 6px;font-size:24px;font-weight:720;letter-spacing:.02em}.header-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.lang-box{display:flex;gap:8px;align-items:center;white-space:nowrap;color:var(--muted);font-size:13px}.lang-box select{width:auto;min-width:130px;padding:7px 9px}.sub{color:var(--muted);font-size:14px;max-width:1120px}main{max-width:1400px;margin:0 auto;padding:18px}.grid{display:grid;grid-template-columns:470px 1fr;gap:18px;align-items:stretch}.grid>.card{height:calc(100vh - 126px);scrollbar-gutter:stable;overscroll-behavior:contain}@media(max-width:1100px){.grid{grid-template-columns:1fr}.grid>.card{height:auto;max-height:none;overflow:visible}header{position:static}.header-top{flex-direction:column}.lang-box{align-self:flex-start}}
@@ -67,7 +67,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>Envelope Mastering Suite <span class="small">v1.1.1</span></h1>
+      <h1>Envelope Mastering Suite <span class="small">v1.2.0</span></h1>
       <div class="sub">適応型デノイズ、トーンEQ、短期ピーク包絡の補正、適応型コンプレッサー、マルチバンド・リバーブを一つの処理チェーンに統合し、音楽音源を公開用に整えるローカルHTMLアプリです。</div>
     </div>
     <div class="lang-box">
@@ -593,7 +593,7 @@
 <script>
 
 const APP_NAME='Envelope Mastering Suite';
-const APP_VERSION='1.1.1';
+const APP_VERSION='1.2.0';
 const I18N_EN = {
   "短期ピーク包絡を目標レベルへ寄せるための基準カーブを作成し、トゲ除去・平滑化・飛び出し圧縮で実用的な補正カーブに整えるローカルHTMLアプリです。": "A local HTML app that creates a reference curve to bring short-term peak envelopes toward a target level, then shapes it with despiking, smoothing, and overrun compression.",
   "表示言語を切り替えます。ログは現在のまま保持されます。": "Switch the display language. Logs are kept as-is.",
@@ -6011,6 +6011,65 @@ loadFile=async function(file){
   compressorLastStage={input:null,output:null,analysis:null};
   return _v611LoadFile(file);
 };
+/* ===== Spectrum Viewer: read-only input / target comparison ===== */
+const spectrumViewerState={audio:null,analysis:null,analyzing:false,requestId:0,modelId:'none',progress:0,error:null};
+const SPECTRUM_VIEWER_BUILTIN_IDS=new Set(['ambient-chillwave','electropop-edm','heavy-metal','jazz-fusion','r-and-b-hiphop','rock-band-music']);
+function spectrumViewerText(ja,en){return currentLang==='en'?en:ja;}
+function spectrumViewerBuildUi(){
+  if(document.getElementById('tab-spectrum'))return;
+  const style=document.createElement('style');style.textContent='.spectrum-viewer-card{display:grid;gap:11px}.spectrum-viewer-card select{width:100%}.spectrum-viewer-status{min-height:2.8em;color:var(--muted);font-size:12px;line-height:1.55}.spectrum-viewer-progress{height:7px;border-radius:999px;overflow:hidden;background:#293246}.spectrum-viewer-progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,#36a9ff,#55e2c1);transition:width .12s linear}.spectrum-viewer-key{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted)}.spectrum-viewer-key b{font-weight:700}.spectrum-viewer-key .positive{color:#ffcf70}.spectrum-viewer-key .negative{color:#ad8cff}';document.head.append(style);
+  const eqButton=document.querySelector('.tab-button[data-tab="eq"]'),button=document.createElement('button');button.type='button';button.className='tab-button';button.dataset.tab='spectrum';button.textContent='スペクトラム';eqButton?.insertAdjacentElement('afterend',button);
+  const eqTab=document.getElementById('tab-eq'),tab=suiteNode('div','tab-panel');tab.id='tab-spectrum';tab.innerHTML='<div class="feature-header"><h2>スペクトラム表示</h2><p class="section-note">読み込んだ入力音源を補正設定から独立して解析・比較します。</p></div><div class="preset-card spectrum-viewer-card"><h3>比較ターゲット</h3><select id="spectrumViewerTarget"></select><div id="spectrumViewerTargetDescription" class="preset-description"></div><div class="spectrum-viewer-progress"><i id="spectrumViewerProgressBar"></i></div><div id="spectrumViewerStatus" class="spectrum-viewer-status"></div></div><div class="preset-card"><h3>表示について</h3><p id="spectrumViewerHelp" class="small"></p></div>';eqTab?.insertAdjacentElement('afterend',tab);
+  const details=document.getElementById('suiteRightDetails'),eqPanel=details?.querySelector('[data-right-tab="eq"]'),right=suitePanel(document.createDocumentFragment(),'spectrum','スペクトラム：入力解析','補正処理に影響しない閲覧専用ビュー');
+  const overlay=suiteGraphSection('正規化スペクトラム：入力 / ターゲット',suiteCanvas('spectrumViewerOverlayCanvas','suite-chart tall')),resolution=suiteNode('div','suite-graph-note');resolution.id='spectrumViewerResolution';overlay.append(resolution);right.append(overlay);
+  const difference=suiteGraphSection('差分：入力 − ターゲット',suiteCanvas('spectrumViewerDifferenceCanvas','suite-chart tall'));difference.append(suiteNode('div','spectrum-viewer-key','<span class="positive"><b>＋</b> 入力音源が強い帯域</span><span class="negative"><b>−</b> 入力音源が弱い帯域</span>'));right.append(difference);if(eqPanel)details.insertBefore(right,eqPanel.nextSibling);else details?.append(right);
+  els.spectrumViewerTarget=tab.querySelector('#spectrumViewerTarget');els.spectrumViewerTargetDescription=tab.querySelector('#spectrumViewerTargetDescription');els.spectrumViewerStatus=tab.querySelector('#spectrumViewerStatus');els.spectrumViewerProgressBar=tab.querySelector('#spectrumViewerProgressBar');els.spectrumViewerResolution=right.querySelector('#spectrumViewerResolution');
+  button.addEventListener('click',()=>{document.querySelectorAll('.tab-button').forEach(item=>item.classList.toggle('active',item===button));document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.toggle('active',panel===tab));suiteActivateRightTab('spectrum');});
+  els.spectrumViewerTarget.addEventListener('change',()=>{spectrumViewerState.modelId=els.spectrumViewerTarget.value;spectrumViewerUpdateTargetDescription();spectrumViewerDraw();});
+  spectrumViewerPopulateTargets();spectrumViewerUpdateLanguage();spectrumViewerDraw();
+}
+function spectrumViewerPopulateTargets(){
+  const select=els.spectrumViewerTarget;if(!select)return;const selected=spectrumViewerState.modelId,en=currentLang==='en';select.replaceChildren();const none=document.createElement('option');none.value='none';none.textContent=en?'No overlay':'重ねない';select.append(none);
+  const builtin=document.createElement('optgroup'),user=document.createElement('optgroup');builtin.label=en?'Built-in targets':'内蔵ターゲット';user.label=en?'User targets':'ユーザーターゲット';
+  for(const model of Object.values(TEM_HIGH_RES_REFERENCE_MODELS)){if(!model||!Array.isArray(model.targetSpectrumDb))continue;const option=document.createElement('option');option.value=model.id;const runtime=TEM_MVP_MODELS.find(item=>item.id===model.id);option.textContent=en?(runtime?.nameEn||model.name):(runtime?.nameJa||model.name);(SPECTRUM_VIEWER_BUILTIN_IDS.has(model.id)?builtin:user).append(option);}
+  if(builtin.children.length)select.append(builtin);if(user.children.length)select.append(user);spectrumViewerState.modelId=[...select.options].some(option=>option.value===selected)?selected:'none';select.value=spectrumViewerState.modelId;spectrumViewerUpdateTargetDescription();
+}
+function spectrumViewerUpdateTargetDescription(){
+  const node=els.spectrumViewerTargetDescription;if(!node)return;const model=TEM_HIGH_RES_REFERENCE_MODELS[spectrumViewerState.modelId],fallback=spectrumViewerText('選択したターゲットを入力スペクトラムに重ねます。','Overlays the selected target on the input spectrum.');node.textContent=model?((currentLang==='en'&&SPECTRUM_VIEWER_BUILTIN_IDS.has(model.id))?fallback:(model.description||fallback)):spectrumViewerText('入力音源のスペクトラムだけを表示します。','Displays only the input spectrum.');
+}
+function spectrumViewerSetStatus(text,progress=0){if(els.spectrumViewerStatus)els.spectrumViewerStatus.textContent=text;if(els.spectrumViewerProgressBar)els.spectrumViewerProgressBar.style.width=(clamp(progress,0,1)*100).toFixed(1)+'%';}
+function spectrumViewerDifference(input,target){return input.map((value,index)=>value-target[index]);}
+function spectrumViewerDifferencePath(frame,values,frequencies,width=2.1){
+  if(!frame||!values?.length)return;const zeroY=frame.y(0),{ctx,pad,pw,ph}=frame,draw=(color,top,height)=>{ctx.save();ctx.beginPath();ctx.rect(pad.l,top,pw,Math.max(0,height));ctx.clip();suiteSpectrumPath(frame,values,color,width,frequencies);ctx.restore();};draw('#ffcf70',pad.t,zeroY-pad.t);draw('#ad8cff',zeroY,pad.t+ph-zeroY);
+}
+function spectrumViewerVisibleData(){
+  const analysis=spectrumViewerState.analysis,audio=spectrumViewerState.audio;if(!analysis||!audio)return null;const ceiling=Math.min(20000,audio.sampleRate*.48);let count=TEM_HIGH_RES_FREQUENCIES.findIndex(frequency=>frequency>ceiling);if(count<0)count=TEM_HIGH_RES_FREQUENCIES.length;count=Math.max(2,count);return{frequencies:TEM_HIGH_RES_FREQUENCIES.slice(0,count),input:analysis.curve.slice(0,count),target:TEM_HIGH_RES_REFERENCE_MODELS[spectrumViewerState.modelId]?.targetSpectrumDb?.slice(0,count)||null};
+}
+function spectrumViewerDraw(){
+  const overlay=els.spectrumViewerOverlayCanvas,difference=els.spectrumViewerDifferenceCanvas;if(!overlay||!difference)return;
+  if(spectrumViewerState.analyzing){const message=spectrumViewerText('入力スペクトラムを解析中...','Analyzing the input spectrum...');suiteEmptyChart(overlay,message);suiteEmptyChart(difference,message);suiteTemLegend(overlay,[]);suiteTemLegend(difference,[]);return;}
+  const data=spectrumViewerVisibleData();if(!data){const message=spectrumViewerState.error||spectrumViewerText('音源を読み込むと入力スペクトラムを表示します。','Load audio to display its input spectrum.');suiteEmptyChart(overlay,message);suiteEmptyChart(difference,message);suiteTemLegend(overlay,[]);suiteTemLegend(difference,[]);if(els.spectrumViewerResolution)els.spectrumViewerResolution.textContent=spectrumViewerText('入力解析後に解像度を表示します。','Resolution appears after input analysis.');return;}
+  if(els.spectrumViewerResolution)els.spectrumViewerResolution.textContent=spectrumViewerText('入力PCM / FFT 8192 / 1/6 oct / ','Input PCM / FFT 8192 / 1/6 oct / ')+spectrumViewerState.analysis.frames+' frames / '+spectrumViewerState.audio.sampleRate+' Hz';
+  const all=data.target?[...data.input,...data.target]:data.input,min=Math.floor((Math.min(...all)-4)/5)*5,max=Math.ceil((Math.max(...all)+4)/5)*5,frame=suiteSpectrumFrame(overlay,min,max);suiteSpectrumPath(frame,data.input,'#4ec5ff',2.2,data.frequencies);const legend=[['#4ec5ff',spectrumViewerText('入力スペクトラム','Input spectrum')]];if(data.target){suiteSpectrumPath(frame,data.target,'#ad8cff',2.1,data.frequencies);legend.push(['#ad8cff',spectrumViewerText('ターゲット','Target')]);}suiteTemLegend(overlay,legend);
+  if(!data.target){suiteEmptyChart(difference,spectrumViewerText('ターゲットを選択すると「入力 − ターゲット」を表示します。','Select a target to display Input − Target.'));suiteTemLegend(difference,[]);return;}
+  const delta=spectrumViewerDifference(data.input,data.target),maxAbs=Math.max(3,Math.ceil(seriesMaximumAbs([delta])/2)*2),differenceFrame=suiteSpectrumFrame(difference,-maxAbs,maxAbs);spectrumViewerDifferencePath(differenceFrame,delta,data.frequencies,2.1);suiteTemLegend(difference,[]);
+}
+async function spectrumViewerEnsureAnalysis(){
+  const audio=state?.raw;if(!audio){spectrumViewerState.audio=null;spectrumViewerState.analysis=null;spectrumViewerState.error=null;spectrumViewerSetStatus(spectrumViewerText('音源を読み込んでください。','Load an audio file.'),0);spectrumViewerDraw();return;}if(spectrumViewerState.audio===audio&&spectrumViewerState.analysis){spectrumViewerSetStatus(spectrumViewerText('入力音源を解析済みです。','Input analysis is ready.'),1);spectrumViewerDraw();return;}if(spectrumViewerState.analyzing&&spectrumViewerState.audio===audio)return;
+  const requestId=++spectrumViewerState.requestId;spectrumViewerState.audio=audio;spectrumViewerState.analysis=null;spectrumViewerState.analyzing=true;spectrumViewerState.error=null;spectrumViewerSetStatus(spectrumViewerText('入力スペクトラムを解析しています...','Analyzing the input spectrum...'),0);spectrumViewerDraw();
+  try{const analysis=await suiteTemAnalyzeSpectrum(audio,progress=>{if(requestId!==spectrumViewerState.requestId)return;spectrumViewerState.progress=progress;spectrumViewerSetStatus(spectrumViewerText('入力スペクトラムを解析しています...','Analyzing the input spectrum...'),progress);},{allowReducedSampleRate:true});if(requestId!==spectrumViewerState.requestId||state?.raw!==audio)return;spectrumViewerState.analysis=analysis;spectrumViewerSetStatus(spectrumViewerText('入力音源を解析済みです。','Input analysis is ready.'),1);}
+  catch(error){if(requestId!==spectrumViewerState.requestId)return;spectrumViewerState.error=(error&&error.message)||String(error);spectrumViewerSetStatus(spectrumViewerText('解析エラー: ','Analysis error: ')+spectrumViewerState.error,0);}
+  finally{if(requestId===spectrumViewerState.requestId){spectrumViewerState.analyzing=false;spectrumViewerDraw();}}
+}
+function spectrumViewerReset(){spectrumViewerState.requestId++;spectrumViewerState.audio=null;spectrumViewerState.analysis=null;spectrumViewerState.analyzing=false;spectrumViewerState.progress=0;spectrumViewerState.error=null;spectrumViewerSetStatus(spectrumViewerText('音源を読み込んでください。','Load an audio file.'),0);spectrumViewerDraw();}
+function spectrumViewerUpdateLanguage(){
+  const en=currentLang==='en',set=(selector,ja,enText)=>document.querySelectorAll(selector).forEach(node=>node.textContent=en?enText:ja);set('.tab-button[data-tab="spectrum"]','スペクトラム','Spectrum');set('#tab-spectrum .feature-header h2','スペクトラム表示','Spectrum Viewer');set('#tab-spectrum .feature-header p','読み込んだ入力音源を補正設定から独立して解析・比較します。','Analyze and compare the loaded input independently of processing settings.');set('#tab-spectrum .spectrum-viewer-card h3','比較ターゲット','Comparison Target');set('#tab-spectrum .preset-card:last-child h3','表示について','About This View');set('#spectrumViewerHelp','入力そのものを解析する閲覧専用機能です。トーンEQの有効／無効、モデル、補正設定、処理結果は変更しません。トーンEQで読み込んだユーザーリファレンスも選択できます。','This read-only view analyzes the original input. It does not change Tonal EQ enablement, model, correction settings, or processing results. User references loaded in Tonal EQ are also available.');set('[data-right-tab="spectrum"] .suite-panel-head h2','スペクトラム：入力解析','Spectrum: Input Analysis');set('[data-right-tab="spectrum"] .suite-panel-head .suite-monitor-note','補正処理に影響しない閲覧専用ビュー','Read-only view independent of processing');const headings=document.querySelectorAll('[data-right-tab="spectrum"] .suite-panel-section > h3');if(headings[0])headings[0].textContent=en?'Normalized Spectrum: Input / Target':'正規化スペクトラム：入力 / ターゲット';if(headings[1])headings[1].textContent=en?'Difference: Input − Target':'差分：入力 − ターゲット';set('[data-right-tab="spectrum"] .spectrum-viewer-key .positive','＋ 入力音源が強い帯域','＋ Input is stronger');set('[data-right-tab="spectrum"] .spectrum-viewer-key .negative','− 入力音源が弱い帯域','− Input is weaker');spectrumViewerPopulateTargets();if(els.spectrumViewerResolution){const audio=spectrumViewerState.audio,frames=spectrumViewerState.analysis?.frames;els.spectrumViewerResolution.textContent=audio&&frames?(spectrumViewerText('入力PCM / FFT 8192 / 1/6 oct / ','Input PCM / FFT 8192 / 1/6 oct / ')+frames+' frames / '+audio.sampleRate+' Hz'):spectrumViewerText('入力解析後に解像度を表示します。','Resolution appears after input analysis.');}if(spectrumViewerState.analyzing)spectrumViewerSetStatus(spectrumViewerText('入力スペクトラムを解析しています...','Analyzing the input spectrum...'),spectrumViewerState.progress);else if(spectrumViewerState.analysis)spectrumViewerSetStatus(spectrumViewerText('入力音源を解析済みです。','Input analysis is ready.'),1);else spectrumViewerSetStatus(spectrumViewerText('音源を読み込んでください。','Load an audio file.'),0);spectrumViewerDraw();
+}
+spectrumViewerBuildUi();
+const _spectrumViewerActivateRightTab=suiteActivateRightTab;suiteActivateRightTab=function(name){const result=_spectrumViewerActivateRightTab(name);if(name==='spectrum')requestAnimationFrame(()=>{spectrumViewerPopulateTargets();spectrumViewerUpdateLanguage();spectrumViewerEnsureAnalysis();});return result;};
+const _spectrumViewerUpdateDynamicLanguage=suiteUpdateDynamicLanguage;suiteUpdateDynamicLanguage=function(){const result=_spectrumViewerUpdateDynamicLanguage();spectrumViewerUpdateLanguage();return result;};
+const _spectrumViewerLoadFile=loadFile;loadFile=async function(file){spectrumViewerReset();return _spectrumViewerLoadFile(file);};
+const _spectrumViewerDrawAll=drawAll;drawAll=function(){const result=_spectrumViewerDrawAll();if(suiteActiveTab==='spectrum')requestAnimationFrame(spectrumViewerDraw);return result;};
 v510DenoiseSyncUi=v600DenoiseSyncUi;
 v510DrawDenoise=v600DrawDenoise;
 v510DenoiseUpdateLanguage=v600DenoiseUpdateLanguage;
