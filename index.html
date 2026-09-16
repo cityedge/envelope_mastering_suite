@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envelope Mastering Suite v1.4.0</title>
+<title>Envelope Mastering Suite v1.4.1</title>
 <style>
 :root{--bg:#0f1117;--panel:#171b24;--panel2:#202633;--text:#e8ebf2;--muted:#a9b1c3;--accent:#77a7ff;--after:#8ee6c8;--gain:#ffd27a;--rawgain:#b9c4d8;--bad:#ff7e82;--up:#61d790;--line:#333b4d;--button:#2a67d8;--button2:#3a4255;--button3:#23845f;--tab:#111827;}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at top left,#1d2944 0,#0f1117 34rem);line-height:1.55}header{padding:22px 28px 16px;border-bottom:1px solid var(--line);background:rgba(15,17,23,.84);position:sticky;top:0;z-index:5;backdrop-filter:blur(10px)}h1{margin:0 0 6px;font-size:24px;font-weight:720;letter-spacing:.02em}.header-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.lang-box{display:flex;gap:8px;align-items:center;white-space:nowrap;color:var(--muted);font-size:13px}.lang-box select{width:auto;min-width:130px;padding:7px 9px}.sub{color:var(--muted);font-size:14px;max-width:1120px}main{max-width:1400px;margin:0 auto;padding:18px}.grid{display:grid;grid-template-columns:470px 1fr;gap:18px;align-items:stretch}.grid>.card{height:calc(100vh - 126px);scrollbar-gutter:stable;overscroll-behavior:contain}@media(max-width:1100px){.grid{grid-template-columns:1fr}.grid>.card{height:auto;max-height:none;overflow:visible}header{position:static}.header-top{flex-direction:column}.lang-box{align-self:flex-start}}
@@ -67,7 +67,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>Envelope Mastering Suite <span class="small">v1.4.0</span></h1>
+      <h1>Envelope Mastering Suite <span class="small">v1.4.1</span></h1>
       <div class="sub">適応型デノイズ、トーンEQ、短期ピーク包絡の補正、適応型コンプレッサー、マルチバンド・リバーブを一つの処理チェーンに統合し、音楽音源を公開用に整えるローカルHTMLアプリです。</div>
     </div>
     <div class="lang-box">
@@ -593,7 +593,7 @@
 <script>
 
 const APP_NAME='Envelope Mastering Suite';
-const APP_VERSION='1.4.0';
+const APP_VERSION='1.4.1';
 const I18N_EN = {
   "短期ピーク包絡を目標レベルへ寄せるための基準カーブを作成し、トゲ除去・平滑化・飛び出し圧縮で実用的な補正カーブに整えるローカルHTMLアプリです。": "A local HTML app that creates a reference curve to bring short-term peak envelopes toward a target level, then shapes it with despiking, smoothing, and overrun compression.",
   "表示言語を切り替えます。ログは現在のまま保持されます。": "Switch the display language. Logs are kept as-is.",
@@ -6232,10 +6232,11 @@ v510DrawDenoise=v600DrawDenoise;
 v510DenoiseUpdateLanguage=v600DenoiseUpdateLanguage;
 v560EnsureDenoiseTimelineCursor();v510DenoiseRefreshPresets('weak');v510DenoiseSelectPreset('weak',false);if(els.denoiseEnabled)els.denoiseEnabled.checked=true;v510DenoiseUpdateLanguage();v510DenoiseSyncUi();applyGlobalControlLocks();drawAll();
 /* ===== Optional final maximizer: bounded-memory DSP (no target-LUFS solver) ===== */
-function maximizerDefaults(){return {enabled:false,presetId:'5',preNormalize:true,referenceLufs:-14,gainDb:5,ceilingDb:-1,releaseMs:100,lookaheadMs:5,truePeak:true};}
+function maximizerDefaults(){return {enabled:false,presetId:'5',preNormalize:true,referenceLufs:-14,gainDb:5,ceilingDb:-1,releaseMs:100,lookaheadMs:5,truePeak:true,adaptiveReleasePct:100,curveSmoothingPct:100};}
 function maximizerConfig(source={}){
-  const d=maximizerDefaults(),number=(key,min,max)=>clamp(Number.isFinite(Number(source[key]))?Number(source[key]):d[key],min,max);
-  return {enabled:source.enabled===true,presetId:String(source.presetId||'custom'),preNormalize:source.preNormalize!==false,referenceLufs:number('referenceLufs',-24,-10),gainDb:number('gainDb',0,18),ceilingDb:number('ceilingDb',-6,0),releaseMs:number('releaseMs',10,500),lookaheadMs:number('lookaheadMs',.1,20),truePeak:source.truePeak!==false};
+  // New defaults use 100/100; older saved settings without these fields retain 0/0.
+  const d={...maximizerDefaults(),adaptiveReleasePct:0,curveSmoothingPct:0},number=(key,min,max)=>clamp(Number.isFinite(Number(source[key]))?Number(source[key]):d[key],min,max);
+  return {enabled:source.enabled===true,presetId:String(source.presetId||'custom'),preNormalize:source.preNormalize!==false,referenceLufs:number('referenceLufs',-24,-10),gainDb:number('gainDb',0,18),ceilingDb:number('ceilingDb',-6,0),releaseMs:number('releaseMs',10,500),lookaheadMs:number('lookaheadMs',.1,20),truePeak:source.truePeak!==false,adaptiveReleasePct:number('adaptiveReleasePct',0,200),curveSmoothingPct:number('curveSmoothingPct',0,200)};
 }
 // Keep only one 400-ms energy ring per channel, not two full filtered PCM arrays.
 async function maximizerMeasureLufs(audio,progress=()=>{}){
@@ -6262,14 +6263,41 @@ async function applyMasteringMaximizer(audio,source,progress=()=>{}){
   const look=Math.max(1,Math.round(sr*cfg.lookaheadMs/1000)),capacity=look+2,queueIndices=new Float64Array(capacity),queueValues=new Float64Array(capacity),requirements=new Float64Array(capacity),kernel=maximizerPeakKernel();
   const outputs=audio.channels.map(()=>new Float32Array(n)),bins=Math.min(12000,Math.max(1,Math.ceil(audio.duration*50))),stride=Math.max(1,Math.ceil(n/bins)),inputPeaks=new Float32Array(bins),outputPeaks=new Float32Array(bins),reductionDb=new Float32Array(bins);
   const attack=Math.exp(-4/look),release=Math.exp(-1/(sr*cfg.releaseMs/1000));let head=0,tail=0,filled=-1,gain=1,maxReductionDb=0,sumReduction=0,inputPeak=0,outputPeak=0,truePeak=0;
+  // A bounded history of forward minima forms a peak-safe attack ramp:
+  // every window contributing to the mean contains the current sample.
+  // 100% blends half of this curve; 200% uses it fully (no 100% saturation).
+  const curveMix=cfg.curveSmoothingPct/200,curveHistory=curveMix>0?new Float64Array(look+1):null;
+  const activityDecay=Math.exp(-1/(sr*.08));let activity=0,adaptiveRelease=release,curveSum=0,curveIndex=0,curveGain=1;
+  let minEffectiveReleaseMs=Infinity,maxEffectiveReleaseMs=0,safetyClampSamples=0;
   // The min queue looks ahead without retaining a whole-track gain envelope.
   const push=index=>{const peak=index<n?maximizerPeakAt(audio.channels,index,cfg.truePeak?kernel:null)*drive:0,required=peak>ceiling?ceiling/peak:1;requirements[index%capacity]=required;while(head!==tail&&queueValues[(tail-1+capacity)%capacity]>=required)tail=(tail-1+capacity)%capacity;queueIndices[tail]=index;queueValues[tail]=required;tail=(tail+1)%capacity;};
   for(let i=0;i<n;i++){
     while(head!==tail&&queueIndices[head]<i)head=(head+1)%capacity;
     while(filled<i+look)push(++filled);
-    const target=queueValues[head];gain=target+(gain-target)*(target<gain?attack:release);gain=Math.min(gain,requirements[i%capacity]);
-    const gr=-20*Math.log10(Math.max(1e-30,gain)),bin=Math.min(bins-1,Math.floor(i/stride));maxReductionDb=Math.max(maxReductionDb,gr);sumReduction+=gr;reductionDb[bin]=Math.max(reductionDb[bin],gr);
-    for(let ch=0;ch<audio.numChannels;ch++){const x=audio.channels[ch][i],driven=x*drive,y=driven*gain;outputs[ch][i]=y;inputPeak=Math.max(inputPeak,Math.abs(x));outputPeak=Math.max(outputPeak,Math.abs(outputs[ch][i]));inputPeaks[bin]=Math.max(inputPeaks[bin],Math.abs(driven));outputPeaks[bin]=Math.max(outputPeaks[bin],Math.abs(outputs[ch][i]));}
+    const target=queueValues[head],required=requirements[i%capacity];
+    let appliedGain;
+    if(cfg.adaptiveReleasePct===0&&cfg.curveSmoothingPct===0){
+      // Preserve the original arithmetic and output exactly at 0 / 0.
+      gain=target+(gain-target)*(target<gain?attack:release);gain=Math.min(gain,required);appliedGain=gain;
+    }else{
+      if(cfg.adaptiveReleasePct>0){
+        activity=activity*activityDecay+(1-activityDecay)*(target<.97?1:0);
+        // Recompute at <= 0.73 ms intervals at 44.1 kHz; no audio-sized buffers.
+        if((i&31)===0){const effectiveMs=clamp(cfg.releaseMs*Math.pow(.45+2.05*activity,cfg.adaptiveReleasePct/100),10,2000);adaptiveRelease=Math.exp(-1/(sr*effectiveMs/1000));minEffectiveReleaseMs=Math.min(minEffectiveReleaseMs,effectiveMs);maxEffectiveReleaseMs=Math.max(maxEffectiveReleaseMs,effectiveMs);}
+      }
+      gain=target+(gain-target)*(target<gain?attack:adaptiveRelease);gain=Math.min(gain,required);appliedGain=gain;
+      if(curveHistory){
+        if(i===0){curveHistory.fill(target);curveSum=target*curveHistory.length;}
+        curveSum+=target-curveHistory[curveIndex];curveHistory[curveIndex]=target;curveIndex=(curveIndex+1)%curveHistory.length;
+        const ramp=clamp(curveSum/curveHistory.length,0,1);
+        curveGain=ramp<curveGain?ramp:ramp+(curveGain-ramp)*adaptiveRelease;
+        appliedGain=gain+(curveGain-gain)*curveMix;
+      }
+      if(appliedGain>required+1e-12)safetyClampSamples++;
+      appliedGain=Math.max(0,Math.min(1,required,appliedGain));
+    }
+    const gr=-20*Math.log10(Math.max(1e-30,appliedGain)),bin=Math.min(bins-1,Math.floor(i/stride));maxReductionDb=Math.max(maxReductionDb,gr);sumReduction+=gr;reductionDb[bin]=Math.max(reductionDb[bin],gr);
+    for(let ch=0;ch<audio.numChannels;ch++){const x=audio.channels[ch][i],driven=x*drive,y=driven*appliedGain;outputs[ch][i]=y;inputPeak=Math.max(inputPeak,Math.abs(x));outputPeak=Math.max(outputPeak,Math.abs(outputs[ch][i]));inputPeaks[bin]=Math.max(inputPeaks[bin],Math.abs(driven));outputPeaks[bin]=Math.max(outputPeaks[bin],Math.abs(outputs[ch][i]));}
     if(i>=8)truePeak=Math.max(truePeak,maximizerPeakAt(outputs,i-8,kernel));
     if((i&32767)===0){progress(.15+.65*i/n);await nextFrame();}
   }
@@ -6277,6 +6305,7 @@ async function applyMasteringMaximizer(audio,source,progress=()=>{}){
   truePeak=Math.max(truePeak,outputPeak);const output={...audio,channels:outputs,formatLabel:(audio.formatLabel||'PCM')+' + maximizer'},outputLufs=await maximizerMeasureLufs(output,p=>progress(.8+.2*p));
   const analysis={enabled:true,config:cfg,inputLufs,outputLufs,preGainDb,totalGainDb,inputPeak,outputPeak,truePeak,truePeakDb:gainToDb(Math.max(truePeak,1e-30)),maxReductionDb,averageReductionDb:sumReduction/Math.max(1,n),inputPeaks,outputPeaks,reductionDb,stride,duration:audio.duration,workingBufferSamples:capacity*3+16*3};
   analysis.ceilingExceeded=analysis.truePeakDb>cfg.ceilingDb+.05;
+  analysis.workingBufferSamples+=curveHistory?.length||0;analysis.minEffectiveReleaseMs=Number.isFinite(minEffectiveReleaseMs)?minEffectiveReleaseMs:cfg.releaseMs;analysis.maxEffectiveReleaseMs=maxEffectiveReleaseMs||cfg.releaseMs;analysis.safetyClampSamples=safetyClampSamples;
   maximizerLufsCache.set(audio,inputLufs);maximizerLufsCache.set(output,outputLufs);progress(1);
   return {audio:output,applied:true,analysis,warnings:analysis.ceilingExceeded?['maximizer-true-peak-ceiling-exceeded']:[]};
 }
@@ -6297,6 +6326,7 @@ function maximizerValidatePresets(records){
   const ids=new Set();return records.map(p=>{
     if(!p||typeof p.id!=='string'||!p.id.startsWith('user:')||ids.has(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>80||!p.settings||typeof p.settings!=='object'||Array.isArray(p.settings))throw new Error('Invalid preset record');
     for(const key of['referenceLufs','gainDb','ceilingDb','releaseMs','lookaheadMs'])if(typeof p.settings[key]!=='number'||!Number.isFinite(p.settings[key]))throw new Error('Invalid preset settings');
+    for(const key of['adaptiveReleasePct','curveSmoothingPct'])if(p.settings[key]!==undefined&&(typeof p.settings[key]!=='number'||!Number.isFinite(p.settings[key])))throw new Error('Invalid adaptive preset settings');
     ids.add(p.id);return {id:p.id,name:p.name.trim(),settings:maximizerConfig({...p.settings,presetId:p.id})};
   });
 }
@@ -6373,11 +6403,11 @@ resetAll=function(){maximizerSettings=maximizerDefaults();const r=_maxReset();ma
 const _maxBatchFile=processOneBatchFile;
 processOneBatchFile=async function(file,cfg,index,total){
   const effective=cfg.maximizer?.enabled?{...cfg,saveMode:'leveled'}:cfg;
-  try{const row=await _maxBatchFile(file,effective,index,total),a=v510LastBatchPipeline?.maximizerAnalysis;return {...row,reverbLufs:a?.inputLufs??row.lufsAfter,maximizer:a?{config:a.config,inputLufs:a.inputLufs,outputLufs:a.outputLufs,preGainDb:a.preGainDb,totalGainDb:a.totalGainDb,truePeakDb:a.truePeakDb,maxReductionDb:a.maxReductionDb,averageReductionDb:a.averageReductionDb,ceilingExceeded:a.ceilingExceeded}:null};}
+  try{const row=await _maxBatchFile(file,effective,index,total),a=v510LastBatchPipeline?.maximizerAnalysis;return {...row,reverbLufs:a?.inputLufs??row.lufsAfter,maximizer:a?{config:a.config,inputLufs:a.inputLufs,outputLufs:a.outputLufs,preGainDb:a.preGainDb,totalGainDb:a.totalGainDb,truePeakDb:a.truePeakDb,maxReductionDb:a.maxReductionDb,averageReductionDb:a.averageReductionDb,ceilingExceeded:a.ceilingExceeded,minEffectiveReleaseMs:a.minEffectiveReleaseMs,maxEffectiveReleaseMs:a.maxEffectiveReleaseMs}:null};}
   finally{v510LastBatchPipeline=null;}
 };
 const _maxBatchReport=buildBatchReportCsv;
-buildBatchReportCsv=function(results,cfg){const csv=_maxBatchReport(results,cfg),lines=[['Maximizer Results (final stage)'],['Configuration',JSON.stringify(cfg.maximizer||maximizerDefaults())],['index','inputFile','maximizerEnabled','preGainDb','driveGainDb','totalGainDb','inputLufs','outputLufs','estimatedTruePeakDb','ceilingExceeded','maxReductionDb','averageReductionDb','nominalLufs','savedMinusNominalLu']];results.forEach((r,i)=>{const a=r.maximizer,comparison=a?maximizerBatchComparison(r,cfg):null;lines.push([i+1,r.inputName||'',!!a,a?.preGainDb??'',a?.config.gainDb??'',a?.totalGainDb??'',a?.inputLufs??'',a?.outputLufs??'',a?.truePeakDb??'',a?.ceilingExceeded??'',a?.maxReductionDb??'',a?.averageReductionDb??'',comparison?.baseline??'',comparison?.delta??'']);});return csv+'\r\n'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';};
+buildBatchReportCsv=function(results,cfg){const csv=_maxBatchReport(results,cfg),lines=[['Maximizer Results (final stage)'],['Configuration',JSON.stringify(cfg.maximizer||maximizerDefaults())],['index','inputFile','maximizerEnabled','preGainDb','driveGainDb','totalGainDb','inputLufs','outputLufs','estimatedTruePeakDb','ceilingExceeded','maxReductionDb','averageReductionDb','nominalLufs','savedMinusNominalLu','adaptiveReleasePct','curveSmoothingPct','minEffectiveReleaseMs','maxEffectiveReleaseMs']];results.forEach((r,i)=>{const a=r.maximizer,comparison=a?maximizerBatchComparison(r,cfg):null;lines.push([i+1,r.inputName||'',!!a,a?.preGainDb??'',a?.config.gainDb??'',a?.totalGainDb??'',a?.inputLufs??'',a?.outputLufs??'',a?.truePeakDb??'',a?.ceilingExceeded??'',a?.maxReductionDb??'',a?.averageReductionDb??'',comparison?.baseline??'',comparison?.delta??'',a?.config.adaptiveReleasePct??'',a?.config.curveSmoothingPct??'',a?.minEffectiveReleaseMs??'',a?.maxEffectiveReleaseMs??'']);});return csv+'\r\n'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';};
 function maximizerBatchComparison(result,cfg){
   const settings=result?.maximizer?.config||cfg?.maximizer,enabled=settings?.enabled===true;
   const base=enabled?(settings.preNormalize!==false?settings.referenceLufs:result?.maximizer?.inputLufs):cfg?.loudnessTargetLufs;
@@ -6407,7 +6437,7 @@ function maximizerBuildUi(){
   const button=suiteNode('button','tab-button');button.dataset.tab='maximizer';button.type='button';button.dataset.maxText='title';document.querySelector('[data-tab="reverb"]').after(button);button.addEventListener('click',maximizerOpenTab);
   const tab=suiteNode('div','tab-panel');tab.id='tab-maximizer';tab.innerHTML='<div class="feature-header"><h2 data-max-text="title"></h2><p class="section-note" data-max-text="intro"></p></div><section class="preset-card"><label class="checkrow"><input type="checkbox" id="maximizerEnabled"><span data-max-text="enabled"></span></label><h3 data-max-text="preset"></h3><select id="maximizerPreset"></select><div class="button-row"><button class="secondary" id="maximizerSave" data-max-text="save"></button><button class="secondary" id="maximizerLoad" data-max-text="load"></button><input id="maximizerFile" type="file" accept=".emsmaximizer" hidden></div></section><section class="feature-quick-settings"><h3 data-max-text="details"></h3><label class="checkrow"><input type="checkbox" id="maximizerPreNormalize"><span data-max-text="preNormalize"></span></label><div id="maximizerParams"></div><label class="checkrow"><input type="checkbox" id="maximizerTruePeak"><span data-max-text="truePeak"></span></label><p class="maximizer-note" data-max-text="help"></p></section>';
   document.getElementById('tab-reverb').after(tab);
-  for(const [key,min,max,step,unit,log]of[['referenceLufs',-24,-10,.1,'LUFS',false],['gainDb',0,18,.1,'dB',false],['ceilingDb',-6,0,.1,'dBFS',false],['releaseMs',10,500,.1,'ms',true],['lookaheadMs',.1,20,.1,'ms',true]]){
+  for(const [key,min,max,step,unit,log]of[['referenceLufs',-24,-10,.1,'LUFS',false],['gainDb',0,18,.1,'dB',false],['ceilingDb',-6,0,.1,'dBFS',false],['releaseMs',10,500,.1,'ms',true],['lookaheadMs',.1,20,.1,'ms',true],['adaptiveReleasePct',0,200,1,'%',false],['curveSmoothingPct',0,200,1,'%',false]]){
     const row=suiteNode('div','maximizer-param');row.innerHTML='<label for="max-'+key+'" data-max-text="'+key+'"></label><input type="range" id="max-'+key+'"><input type="number" id="max-number-'+key+'" aria-label="'+key+' ('+unit+')">';const range=row.querySelector('[type=range]'),number=row.querySelector('[type=number]');range.min=log?0:min;range.max=log?1000:max;range.step=log?1:step;number.min=min;number.max=max;number.step=step;range.dataset.key=number.dataset.key=key;if(log)range.dataset.log='1';
     const edit=value=>{maximizerSettings=maximizerConfig({...maximizerSettings,[key]:value,presetId:'custom'});stopStageAudition(true);markProcessingDirty();maximizerSyncUi();refreshOutputActionState();v400UpdateBatchInfo();};range.addEventListener('input',()=>edit(log?Math.exp(Math.log(min)+Number(range.value)/1000*Math.log(max/min)):Number(range.value)));number.addEventListener('change',()=>edit(Number(number.value)));tab.querySelector('#maximizerParams').append(row);
   }
@@ -6426,6 +6456,8 @@ function maximizerBuildUi(){
   const controls=suiteNode('div','maximizer-note','<label><input id="maximizerZoom" type="checkbox"> <span data-max-text="zoom"></span></label>');right.append(controls);controls.querySelector('input').addEventListener('change',maximizerDraw);
   for(const [id,title]of[['maximizerWave','wave'],['maximizerGr','gr']]){const section=suiteGraphSection('',suiteCanvas(id,'suite-chart tall'));section.querySelector('h3').dataset.maxText=title;const legend=suiteNode('div','maximizer-legend');legend.dataset.maxText=id==='maximizerWave'?'waveLegend':'grLegend';section.append(legend);right.append(section);const canvas=section.querySelector('canvas');canvas.addEventListener('click',event=>{const a=maximizerAnalysis();if(!a)return;const rect=canvas.getBoundingClientRect(),range=maximizerViewRange(a);stopStageAudition(false);stageAudition.offsets.maximizer=range.start+clamp((event.clientX-rect.left-48)/(rect.width-60),0,1)*(range.end-range.start);suiteStageAuditionUpdateUi();maximizerDraw();});}
   right.append(suiteNode('p','maximizer-note'));right.lastChild.dataset.maxText='graphHelp';
+  const overview=suiteGraphSection('',suiteCanvas('standardMaximizerWave','suite-chart tall static-wave'));overview.id='standardMaximizerSection';overview.querySelector('h3').dataset.maxText='flowWave';
+  const overviewLegend=suiteNode('div','maximizer-legend');overviewLegend.dataset.maxText='waveLegend';overview.append(overviewLegend);document.querySelector('[data-right-tab="flow"]').append(overview);
   maximizerBuildPresetManager();maximizerUpdateLanguage();maximizerSyncUi();
 }
 function maximizerSyncUi(){
@@ -6440,21 +6472,30 @@ function maximizerSyncUi(){
 }
 function maximizerUpdateLanguage(){
   const labels={title:['マキシマイザ','Maximizer'],intro:['ラウドネス基準合わせ＋指定ゲインを、最終リミッターへ入力します。','Feed loudness-reference gain plus drive into the final limiter.'],enabled:['マキシマイザを有効にする','Enable Maximizer'],preset:['プリセット','Preset'],save:['設定を書き出す','Export Settings'],load:['設定を読み込む','Import Settings'],details:['詳細設定','Detailed Settings'],preNormalize:['事前にラウドネスをそろえる','Match loudness before maximizing'],truePeak:['True Peak検出を使用','Use True Peak detection'],referenceLufs:['事前合わせの基準（LUFS）','Pre-normalization reference (LUFS)'],gainDb:['マキシマイズゲイン（dB）','Maximizing gain (dB)'],ceilingDb:['出力上限（dBFS）','Output ceiling (dBFS)'],releaseMs:['リリース（ms／対数目盛り）','Release (ms / logarithmic)'],lookaheadMs:['先読み（ms／対数目盛り）','Lookahead (ms / logarithmic)'],help:['基準LUFSは最終目標ではありません。True Peak検出はサンプル間ピークを考慮しますが、厳密な上限保証ではありません。ON時は処理WAVのみ保存できます。','Reference LUFS is not an output target. True Peak detection considers inter-sample peaks but does not guarantee a strict ceiling. Only processed WAV export is available when applied.'],flowNote:['任意の最終段・既定OFF','Optional final stage · OFF by default'],open:['設定を開く','Open Settings'],review:['マキシマイザ：圧縮の詳細','Maximizer: Limiting Detail'],reviewNote:['リミッター入力と出力を同じ尺度で比較','Compare limiter input and output on one scale'],zoom:['再生位置付近の10秒を拡大','Zoom to 10 seconds around playhead'],wave:['波形：リミッター入力／出力','Waveform: Limiter Input / Output'],gr:['ゲインリダクション：時間変化','Gain Reduction over Time'],waveLegend:['黄：ゲイン加算後の入力　緑：出力　白破線：出力上限','Amber: driven input · Green: output · White dashed: ceiling'],grLegend:['紫：抑制量（下向き）　赤：再生位置','Purple: reduction (downward) · Red: playhead'],graphHelp:['波形は各区間の最大振幅を表示します。左右チャンネルは共通のゲインで制御します。グラフをクリックして試聴位置を変更できます。','Waveforms show maximum amplitude per interval. Channels share one gain envelope. Click a graph to seek.']};
+  labels.flowWave=['マキシマイザ概要：波形：リミッター入力／出力','Maximizer Overview: Waveform: Limiter Input / Output'];
+  labels.adaptiveReleasePct=['リリース自動調整量（%）','Adaptive release amount (%)'];labels.curveSmoothingPct=['抑制曲線の調整量（%）','Gain-curve shaping amount (%)'];
   for(const el of document.querySelectorAll('[data-max-text]')){const label=labels[el.dataset.maxText];if(label)el.textContent=label[currentLang==='en'?1:0];}const button=document.querySelector('[data-tab="maximizer"]');if(button)button.textContent=labels.title[currentLang==='en'?1:0];
+let adaptiveNote=document.getElementById('maximizerAdaptiveNote');if(!adaptiveNote&&document.getElementById('maximizerParams')){adaptiveNote=suiteNode('p','maximizer-note');adaptiveNote.id='maximizerAdaptiveNote';document.getElementById('maximizerParams').after(adaptiveNote);}if(adaptiveNote)adaptiveNote.textContent=maximizerText('独立調整：0%は従来動作、100%は標準、200%は作用を強める設定です。高いほど高音質という意味ではありません。自動調整は設定リリースを基準に短いピークでは速く、持続抑制では遅く戻します。曲線調整は先読み区間の抑制配分を変えます。設定変更後は再処理してください。','Independent controls: 0% retains the original behavior, 100% is the default, and 200% strengthens the effect—not a quality rating. Adaptive release returns faster after brief peaks and slower during sustained limiting, relative to the release setting. Curve shaping redistributes gain reduction around peaks. Reprocess after changes.');
   maximizerRenderPresets();denoiseSyncPresetLayout();
   const save=document.getElementById('maximizerSave'),load=document.getElementById('maximizerLoad');if(save)save.textContent=maximizerText('プリセット保存','Save Presets');if(load)load.textContent=maximizerText('プリセット読み込み','Load Presets');
 }
 function maximizerViewRange(a){const zoom=document.getElementById('maximizerZoom')?.checked,time=suiteStageAuditionCurrentTime('maximizer'),start=zoom?Math.max(0,Math.min(a.duration-10,time-5)):0;return {start,end:zoom?Math.min(a.duration,start+10):a.duration};}
 function maximizerDraw(){
   const a=maximizerAnalysis(),metrics=document.getElementById('maximizerMetrics');if(!metrics)return;
-  if(!a){metrics.textContent=maximizerText('マキシマイザを有効にして補正処理を実施してください。','Enable Maximizer and run processing.');for(const id of['maximizerWave','maximizerGr'])suiteEmptyChart(document.getElementById(id),maximizerText('処理結果なし','No processing result'));return;}
+  if(!a){metrics.textContent=maximizerText('マキシマイザを有効にして補正処理を実施してください。','Enable Maximizer and run processing.');for(const id of['maximizerWave','maximizerGr','standardMaximizerWave'])suiteEmptyChart(document.getElementById(id),maximizerText('処理結果なし','No processing result'));return;}
   const fmt=(v,unit)=>Number.isFinite(v)?v.toFixed(2)+' '+unit:'—',rows=[['事前合わせゲイン','Pre-normalization gain',fmt(a.preGainDb,'dB')],['指定／合計ゲイン','Drive / Total gain',fmt(a.config.gainDb,'dB')+' / '+fmt(a.totalGainDb,'dB')],['LUFS：前 → 後','LUFS: before → after',fmt(a.inputLufs,'')+' → '+fmt(a.outputLufs,'')],['サンプルピーク：前 → 後','Sample peak: before → after',fmt(gainToDb(a.inputPeak),'')+' → '+fmt(gainToDb(a.outputPeak),'dBFS')],['出力True Peak（推定）','Output True Peak (estimated)',fmt(a.truePeakDb,'dBTP')],['最大／平均抑制','Max / Average reduction',fmt(a.maxReductionDb,'')+' / '+fmt(a.averageReductionDb,'dB')]];
+  rows.push(['自動調整／曲線改良','Adaptive release / Curve shaping',(a.config.adaptiveReleasePct||0)+'% / '+(a.config.curveSmoothingPct||0)+'%'],['実効リリース範囲','Effective release range',fmt(a.minEffectiveReleaseMs??a.config.releaseMs,'')+' – '+fmt(a.maxEffectiveReleaseMs??a.config.releaseMs,'ms')]);
   const html=rows.map(([ja,en,value])=>'<div><small>'+maximizerText(ja,en)+'</small><strong>'+value+'</strong></div>').join('')+(a.ceilingExceeded?'<p class="maximizer-warning">'+maximizerText('推定True Peakが出力上限を超えています。出力上限を下げるなど、設定を見直してください。','Estimated True Peak exceeds the ceiling. Consider lowering the ceiling.')+'</p>':'');if(metrics.innerHTML!==html)metrics.innerHTML=html;
-  if(suiteActiveTab!=='maximizer')return;const range=maximizerViewRange(a),time=suiteStageAuditionCurrentTime('maximizer'),first=Math.max(0,Math.floor(range.start*state.finalProcessed.sampleRate/a.stride)),last=Math.min(a.inputPeaks.length,Math.ceil(range.end*state.finalProcessed.sampleRate/a.stride));let peak=dbToGain(a.config.ceilingDb)*1.1;for(let i=first;i<last;i++)peak=Math.max(peak,a.inputPeaks[i]*1.05);
-  for(const [id,gr]of[['maximizerWave',false],['maximizerGr',true]]){const frame=suiteChartFrame(document.getElementById(id),gr?-Math.max(3,Math.ceil(a.maxReductionDb)): -peak,gr?0:peak,gr?'dB':'amplitude',1),{ctx,pad,pw,ph,dpr}=frame,x=index=>frame.x((index*a.stride/state.finalProcessed.sampleRate-range.start)/(range.end-range.start||1));ctx.save();ctx.beginPath();ctx.rect(pad.l,pad.t,pw,ph);ctx.clip();
+  if(suiteActiveTab==='flow')maximizerDrawGraphs(a,[['standardMaximizerWave',false]],{start:0,end:a.duration});
+  if(suiteActiveTab==='maximizer')maximizerDrawGraphs(a,[['maximizerWave',false],['maximizerGr',true]],maximizerViewRange(a),suiteStageAuditionCurrentTime('maximizer'));
+}
+// Share the same peak data and drawing scale; the overview has no zoom or playhead.
+function maximizerDrawGraphs(a,charts,range,time=null){
+  const first=Math.max(0,Math.floor(range.start*state.finalProcessed.sampleRate/a.stride)),last=Math.min(a.inputPeaks.length,Math.ceil(range.end*state.finalProcessed.sampleRate/a.stride));let peak=dbToGain(a.config.ceilingDb)*1.1;for(let i=first;i<last;i++)peak=Math.max(peak,a.inputPeaks[i]*1.05);
+  for(const [id,gr]of charts){const frame=suiteChartFrame(document.getElementById(id),gr?-Math.max(3,Math.ceil(a.maxReductionDb)): -peak,gr?0:peak,gr?'dB':'amplitude',1),{ctx,pad,pw,ph,dpr}=frame,x=index=>frame.x((index*a.stride/state.finalProcessed.sampleRate-range.start)/(range.end-range.start||1));ctx.save();ctx.beginPath();ctx.rect(pad.l,pad.t,pw,ph);ctx.clip();
     if(gr){ctx.fillStyle='rgba(194,139,255,.55)';const width=Math.max(dpr,pw*(a.stride/state.finalProcessed.sampleRate)/(range.end-range.start||1));for(let i=first;i<last;i++)ctx.fillRect(x(i),frame.y(0),width,frame.y(-a.reductionDb[i])-frame.y(0));}
     else{for(const [data,color]of[[a.inputPeaks,'#ffcf70'],[a.outputPeaks,'#56dcc2']]){ctx.strokeStyle=color;ctx.lineWidth=dpr;ctx.beginPath();for(let i=first;i<last;i++){ctx.moveTo(x(i),frame.y(data[i]));ctx.lineTo(x(i),frame.y(-data[i]));}ctx.stroke();}for(const sign of[-1,1])v460DrawHorizontal(frame,sign*dbToGain(a.config.ceilingDb),'#d9deeb',1,[5,4]);}
-    v460DrawHorizontal(frame,0,'#8d97aa',1);const cursor=frame.x((time-range.start)/(range.end-range.start||1));ctx.strokeStyle='#ff537b';ctx.lineWidth=1.5*dpr;ctx.beginPath();ctx.moveTo(cursor,pad.t);ctx.lineTo(cursor,pad.t+ph);ctx.stroke();ctx.restore();ctx.fillStyle='#8d97aa';ctx.font=(10*dpr)+'px system-ui';for(let i=0;i<=6;i++){ctx.textAlign=i===0?'left':i===6?'right':'center';ctx.fillText(formatTime(range.start+(range.end-range.start)*i/6),frame.x(i/6),frame.h-7*dpr);}ctx.textAlign='left';
+    v460DrawHorizontal(frame,0,'#8d97aa',1);if(time!==null){const cursor=frame.x((time-range.start)/(range.end-range.start||1));ctx.strokeStyle='#ff537b';ctx.lineWidth=1.5*dpr;ctx.beginPath();ctx.moveTo(cursor,pad.t);ctx.lineTo(cursor,pad.t+ph);ctx.stroke();}ctx.restore();ctx.fillStyle='#8d97aa';ctx.font=(10*dpr)+'px system-ui';for(let i=0;i<=6;i++){ctx.textAlign=i===0?'left':i===6?'right':'center';ctx.fillText(formatTime(range.start+(range.end-range.start)*i/6),frame.x(i/6),frame.h-7*dpr);}ctx.textAlign='left';
   }
 }
 const _maxDynamicLanguage=suiteUpdateDynamicLanguage;
