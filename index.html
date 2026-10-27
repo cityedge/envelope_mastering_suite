@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envelope Mastering Suite v1.5.0</title>
+<title>Envelope Mastering Suite v1.5.1</title>
 <style>
 
 :root{--bg:#0f1117;--panel:#171b24;--panel2:#202633;--text:#e8ebf2;--muted:#a9b1c3;--accent:#77a7ff;--after:#8ee6c8;--gain:#ffd27a;--rawgain:#b9c4d8;--bad:#ff7e82;--up:#61d790;--line:#333b4d;--button:#2a67d8;--button2:#3a4255;--button3:#23845f;--tab:#111827;}
@@ -68,7 +68,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>Envelope Mastering Suite <span class="small">v1.5.0</span></h1>
+      <h1>Envelope Mastering Suite <span class="small">v1.5.1</span></h1>
       <div class="sub">適応型デノイズ、トーンEQ、短期ピーク包絡の補正、適応型コンプレッサー、マルチバンド・リバーブを一つの処理チェーンに統合し、音楽音源を公開用に整えるローカルHTMLアプリです。</div>
     </div>
     <div class="lang-box">
@@ -8790,7 +8790,7 @@ async function makeDownload(mode = "plain") {
     log("ERROR: " + error.message);
   }
 }
-// Existing CSV sections and serialization, including compatibility behavior.
+// CSV v3: summary, stage settings/results, then detailed diagnostics.
 function safeLufsNumber(v) {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
@@ -8819,286 +8819,61 @@ function v440BatchValue(value, digits = 2) {
   return Number.isFinite(value) ? formatReportNumber(value, digits) : "";
 }
 
+// Structured report: settings are frozen at batch start; never parse CSV text.
 function buildProcessingChainReportCsv(results, cfg) {
-  const lines = [],
-    eq = cfg.eq || {},
-    comp = cfg.compressor || {},
-    reverb = cfg.reverb || {},
-    add = (...row) => lines.push(row.map(csvCell).join(","));
-  add(
-    APP_NAME + " v" + APP_VERSION + " batch report",
-    new Date().toISOString(),
-  );
-  add("Report schema", "per-file processing-chain audit v2");
-  add("");
-  add("Configuration", "Value");
-  [
-    ["saveMode", batchSaveModeCode(cfg.saveMode)],
-    ["postfix", cfg.postfix],
-    ["outputMode", cfg.requestedOutputMode],
-    ["normalizePeakDbfs", v440BatchValue(cfg.normalizeTargetDb, 1)],
-    [
-      "intersampleSafetyReserveDb",
-      v440BatchValue(-V480_INTERSAMPLE_SAFETY_RESERVE_DB, 1),
-    ],
-    ["loudnessTargetLufs", v440BatchValue(cfg.loudnessTargetLufs, 1)],
-    ["pcm16Dither", v440CsvFlag(cfg.dither16Bit)],
-    ["ditherSeed", cfg.ditherSeed || ""],
-    ["wavCompatibilityGuard", v440CsvFlag(cfg.wavCompatibilityGuard)],
-    ["tonalEq.enabled", v440CsvFlag(eq.enabled !== false)],
-    ["tonalEq.modelId", eq.modelId || ""],
-    ["tonalEq.amountPct", eq.amountPct ?? ""],
-    ["tonalEq.residualCorrection", v440CsvFlag(eq.residualEnabled !== false)],
-    ["tonalEq.loudnessEfficiency", v440CsvFlag(eq.efficiencyEnabled !== false)],
-    ["leveler.enabled", v440CsvFlag(!cfg.levelingBypass)],
-    ["leveler.presetId", cfg.levelingPresetId || "custom"],
-    ["compressor.enabled", v440CsvFlag(comp.enabled !== false)],
-    ["compressor.presetId", comp.presetId || "custom"],
-    ["compressor.targetAverageGrDb", comp.targetAverageGrDb ?? ""],
-    ["compressor.maxReductionDb", comp.maxReductionDb ?? ""],
-    ["compressor.ratio", comp.ratio ?? ""],
-    ["compressor.attackMs", comp.attackMs ?? ""],
-    ["compressor.releaseMs", comp.releaseMs ?? ""],
-    ["compressor.ceilingDbtp", comp.ceilingDb ?? ""],
-    ["reverb.enabled", v440CsvFlag(reverb.enabled)],
-    ["reverb.presetId", cfg.reverbPresetId || "custom"],
-    ["reverb.roomProfile", reverb.roomProfile || ""],
-    ["reverb.globalWetPct", reverb.globalWetPct ?? ""],
-    ["reverb.tailMode", reverb.tailMode || ""],
-    ["reverb.roomSeed", reverb.roomSeed ?? ""],
-  ].forEach((row) => add(...row));
-  for (const band of ["low", "mid", "high"]) {
-    const b = reverb.bands?.[band];
-    if (!b) continue;
-    [
-      ["wet", b.wet],
-      ["predelayMs", b.predelay],
-      ["decaySec", b.decay],
-      ["dampingPct", b.damping],
-      ["widthPct", b.width],
-      ["mute", v440CsvFlag(b.mute)],
-      ["solo", v440CsvFlag(b.solo)],
-    ].forEach(([key, value]) => add("reverb." + band + "." + key, value));
-  }
-  add("");
-  const header = [
-    "index",
-    "status",
-    "inputFile",
-    "savedFile",
-    "message",
-    "inputDurationSec",
-    "outputDurationSec",
-    "tailAddedSec",
-    "sampleRateHz",
-    "channels",
-    "tonalEqEnabled",
-    "eqReferenceModel",
-    "eqModelMatching",
-    "eqResidualCorrection",
-    "eqEfficiencyEnabled",
-    "eqSubsonicApplied",
-    "eqSubsonicCutoffHz",
-    "eqManualBell",
-    "levelerEnabled",
-    "levelerPresetId",
-    "compressorEnabled",
-    "compressorPresetId",
-    "compressorAverageGrDb",
-    "compressorMaxGrDb",
-    "compressorMakeupDb",
-    "compressorInputPlrDb",
-    "compressorOutputPlrDb",
-    "reverbEnabled",
-    "reverbPresetId",
-    "reverbRoomProfile",
-    "inputLufs",
-    "afterLevelerLufs",
-    "afterCompressorLufs",
-    "afterReverbLufs",
-    "savedLufs",
-    "savedGainDb",
-    "intersampleSafetyTrimDb",
-    "peakLimited",
-    "inputPeakDbfs",
-    "afterEqPeakDbfs",
-    "afterLevelerPeakDbfs",
-    "afterCompressorPeakDbfs",
-    "afterReverbPeakDbfs",
-    "integerClipSamples",
-    "saveMode",
-    "outputMode",
-    "sizeBytes",
+  const lines = [], add = (...row) => lines.push(row.map(csvCell).join(","));
+  add(APP_NAME + " v" + APP_VERSION + " batch report", new Date().toISOString());
+  add("Report schema", "structured processing audit v3");
+  add("Notes", "Empty measurements mean unavailable, not zero. Preset values may be customized.");
+  add(""); add("1. Batch summary");
+  add("totalFiles", results.length);
+  for (const status of ["OK", "ERROR", "SKIP"]) add(status, results.filter(r => r.status === status).length);
+  add("saveMode", batchSaveModeCode(cfg.saveMode)); add("outputMode", cfg.requestedOutputMode);
+  add(""); add("2. Processing stages / batch-start settings");
+  add("order","stage","enabled","presetId","presetName","referenceModel");
+  const stages = [
+    ["denoise", cfg.denoise?.enabled === true, cfg.denoise],
+    ["eq", cfg.eq?.enabled !== false, cfg.eq],
+    ["leveler", !cfg.levelingBypass, {base:cfg.base,shape:cfg.shape}],
+    ["compressor", cfg.compressor?.enabled !== false, cfg.compressor],
+    ["reverb", !!cfg.reverb?.enabled, cfg.reverb],
+    ["maximizer", !!cfg.maximizer?.enabled, cfg.maximizer]
   ];
-  add(...header);
-  results.forEach((r, index) =>
-    add(
-      index + 1,
-      r.status || "",
-      r.inputName || "",
-      r.savedName || "",
-      r.message || "",
-      v440BatchValue(r.inputDuration, 2),
-      v440BatchValue(r.outputDuration, 2),
-      v440BatchValue(r.reverbTailAdded, 2),
-      r.sampleRate || "",
-      r.channels || "",
-      v440CsvFlag(r.tonalEqEnabled),
-      r.tonalEqModelName || r.tonalEqModelId || "",
-      v440CsvFlag(r.tonalEqModelMatching),
-      v440CsvFlag(r.tonalEqResidual),
-      v440CsvFlag(r.tonalEqEfficiencyEnabled),
-      v440CsvFlag(r.tonalEqSubsonicApplied),
-      v440BatchValue(r.tonalEqSubsonicCutoffHz, 1),
-      r.tonalEqManualBell || "",
-      v440CsvFlag(!r.levelingBypass),
-      r.levelingPresetId || cfg.levelingPresetId || "",
-      v440CsvFlag(r.compressorEnabled),
-      r.compressorPresetId || "",
-      v440BatchValue(r.compressorAverageReductionDb, 2),
-      v440BatchValue(r.compressorMaxReductionDb, 2),
-      v440BatchValue(r.compressorMakeupGainDb, 2),
-      v440BatchValue(r.compressorInputPlrDb, 2),
-      v440BatchValue(r.compressorOutputPlrDb, 2),
-      v440CsvFlag(r.reverbEnabled),
-      r.reverbPresetId || cfg.reverbPresetId || "",
-      r.roomProfile || "",
-      v440BatchValue(r.lufsBefore, 1),
-      v440BatchValue(r.lufsLeveled, 1),
-      v440BatchValue(r.lufsCompressed, 1),
-      v440BatchValue(r.reverbLufs ?? r.lufsAfter, 1),
-      v440BatchValue(r.lufsSaved, 1),
-      v440BatchValue(r.appliedGainDb, 2),
-      v440BatchValue(r.samplePeakSafetyTrimDb, 2),
-      v440CsvFlag(r.peakLimited),
-      v440BatchValue(r.peakInput, 2),
-      v440BatchValue(r.peakAfterEq, 2),
-      v440BatchValue(r.peakAfterLeveling, 2),
-      v440BatchValue(r.peakAfterCompressor, 2),
-      v440BatchValue(r.peakAfterReverb, 2),
-      r.integerClipSamples || "",
-      r.saveMode || batchSaveModeCode(cfg.saveMode),
-      r.mode || "",
-      r.size || "",
-    ),
-  );
-  const ok = results.filter((result) => result.status === "OK"),
-    saved = lufsStats(ok.map((result) => result.lufsSaved)),
-    final = lufsStats(ok.map((result) => result.lufsAfter)),
-    subsonic = ok.filter((result) => result.tonalEqSubsonicApplied).length,
-    peakLimited = ok.filter((result) => result.peakLimited).length,
-    clips = ok.filter((result) => result.integerClipSamples > 0).length,
-    safetyTrimmed = ok.filter(
-      (result) => (result.samplePeakSafetyTrimDb || 0) < -0.00005,
-    ).length;
-  add("");
-  add("Summary", "Value");
-  [
-    ["totalFiles", results.length],
-    ["success", ok.length],
-    ["error", results.filter((result) => result.status === "ERROR").length],
-    ["skipped", results.filter((result) => result.status === "SKIP").length],
-    ["finalLufsAverage", v440BatchValue(final.avg, 1)],
-    ["finalLufsMin", v440BatchValue(final.min, 1)],
-    ["finalLufsMax", v440BatchValue(final.max, 1)],
-    ["savedLufsAverage", v440BatchValue(saved.avg, 1)],
-    ["savedLufsMin", v440BatchValue(saved.min, 1)],
-    ["savedLufsMax", v440BatchValue(saved.max, 1)],
-    ["peakLimitedCount", peakLimited],
-    ["intersampleSafetyTrimFileCount", safetyTrimmed],
-    ["integerClipFileCount", clips],
-    ["subsonicCleanupAppliedCount", subsonic],
-  ].forEach((row) => add(...row));
-  return "\ufeff" + lines.join("\r\n") + "\r\n";
-}
-
-function appendLegacyDenoiseReportCsv(csv, results) {
-  const base = csv.replace(/\r?\n$/, ""),
-    header = [
-      "index",
-      "inputFile",
-      "denoiseEnabled",
-      "denoiseApplied",
-      "denoiseStatus",
-      "denoiseBypassReason",
-      "declickEnabled",
-      "detected",
-      "repaired",
-      "review",
-      "repairedPerMinute",
-      "maxCandidateSamples48k",
-      "maxConfidence",
-      "limitReached",
-      "spectralEnabled",
-      "spectralMode",
-      "globalScore",
-      "maxSegmentScore",
-      "confidence",
-      "averageReductionDb",
-      "maxReductionDb",
-      "activeFramePercent",
-      "primaryBands",
-      "temReboostWarning",
-      "temReboostDb",
-      "temReboostHz",
-      "temRiskScore",
-      "inputPeakDbfs",
-      "outputPeakDbfs",
-      "warnings",
-    ],
-    lines = [
-      "",
-      "",
-      csvCell("Adaptive Denoise Results"),
-      header.map(csvCell).join(","),
-    ];
-  for (let index = 0; index < results.length; index++) {
-    const row = results[index] || {};
-    lines.push(
-      [
-        index + 1,
-        row.inputName || "",
-        row.denoiseEnabled ? "YES" : "NO",
-        row.denoiseApplied ? "YES" : "NO",
-        row.denoiseStatus || "",
-        row.denoiseBypassReason || "",
-        row.declickEnabled ? "YES" : "NO",
-        row.denoiseDetectedCount,
-        row.denoiseRepairedCount,
-        row.denoiseReviewCount,
-        formatReportNumber(row.denoiseRepairedPerMinute, 2),
-        formatReportNumber(row.denoiseMaxCandidateSamples, 2),
-        formatReportNumber(row.denoiseMaxConfidence, 3),
-        row.denoiseLimitReached ? "YES" : "NO",
-        row.spectralEnabled ? "YES" : "NO",
-        row.denoiseSpectralMode || "",
-        formatReportNumber(row.denoiseGlobalScore, 3),
-        formatReportNumber(row.denoiseMaxSegmentScore, 3),
-        formatReportNumber(row.denoiseConfidence, 3),
-        formatReportNumber(row.denoiseAverageReductionDb, 2),
-        formatReportNumber(row.denoiseMaxReductionDb, 2),
-        formatReportNumber(row.denoiseActiveFramePercent, 1),
-        row.denoisePrimaryBands || "",
-        row.denoiseTemReboostWarning ? "YES" : "NO",
-        formatReportNumber(row.denoiseTemReboostDb, 2),
-        formatReportNumber(row.denoiseTemReboostHz, 1),
-        formatReportNumber(row.denoiseTemRiskScore, 3),
-        formatReportNumber(row.denoiseInputPeakDbfs, 2),
-        formatReportNumber(row.denoiseOutputPeakDbfs, 2),
-        row.denoiseWarnings || "",
-      ]
-        .map(csvCell)
-        .join(","),
-    );
+  stages.forEach(([stage, enabled, settings], i) => {
+    const p = cfg.stagePresets?.[stage] || {};
+    add(i+1,stage,v440CsvFlag(enabled),p.id || settings?.presetId || "",p.name || "",p.model || (stage === "eq" ? cfg.eq?.modelId : ""));
+  });
+  add(""); add("3. File results");
+  const sections = [
+    [null,["savedName","message","inputDuration","outputDuration","sampleRate","channels","lufsBefore","lufsSaved","appliedGainDb","integerClipSamples","size"]],
+    ["4. Denoise results",["denoiseStatus","denoiseBypassReason","denoiseDetectedCount","denoiseRepairedCount","microBurstDetectedCount","microBurstRepairedCount","denoiseAverageReductionDb","denoiseWarnings"]],
+    ["5. EQ results",["tonalEqEnabled","tonalEqModelName","tonalEqModelMatching","tonalEqResidual","tonalEqEfficiencyEnabled","tonalEqSubsonicApplied","tonalEqSubsonicCutoffHz","tonalEqManualBell","peakAfterEq"]],
+    ["6. Leveler results",["levelingBypass","levelingPresetId","lufsLeveled","peakAfterLeveling"]],
+    ["7. Compressor results",["compressorEnabled","compressorPresetId","compressorAverageReductionDb","compressorMaxReductionDb","compressorMakeupGainDb","compressorInputPlrDb","compressorOutputPlrDb","lufsCompressed","peakAfterCompressor"]],
+    ["8. Reverb results",["reverbEnabled","reverbPresetId","roomProfile","reverbTailAdded","reverbLufs","peakAfterReverb"]],
+    ["9. Maximizer results",["maximizer.inputLufs","maximizer.outputLufs","maximizer.totalGainDb","maximizer.truePeakDb","maximizer.maxReductionDb","maximizer.averageReductionDb"]],
+    ["10. Output diagnostics",["saveMode","mode","peakLimited","samplePeakSafetyTrimDb","integerClipSamples","peakInput"]]
+  ];
+  for (const [title, fields] of sections) {
+    if (title) { add(""); add(title); }
+    add("index","inputFile","status",...fields);
+    results.forEach((r,i) => add(i+1,r.inputName,r.status,...fields.map(key=>key.split('.').reduce((v,k)=>v?.[k],r))));
   }
-  return base + "\r\n" + lines.join("\r\n") + "\r\n";
+  const report = appendMaximizerReportCsv(
+    "\ufeff" + lines.join("\r\n") + "\r\n" + buildDenoiseDetailReportCsv(results, cfg), results, cfg);
+  lines.length = 0;
+  add(""); add("13. Complete settings / batch-start snapshot"); add("stage","parameter","value");
+  const flatten = (stage, prefix, value) => {
+    if (value && typeof value === "object") for (const [key, child] of Object.entries(value)) flatten(stage,prefix ? prefix+"."+key : key,child);
+    else add(stage,prefix,value);
+  };
+  stages.forEach(([stage,,settings]) => flatten(stage,"",settings));
+  for (const key of ["saveMode","requestedOutputMode","normalizeTargetDb","loudnessTargetLufs","postfix","dither16Bit","ditherSeed","wavCompatibilityGuard"]) flatten("output",key,cfg[key]);
+  return report + lines.join("\r\n") + "\r\n";
 }
 
-function replaceDenoiseReportCsv(csv, results, cfg) {
-  const base = csv
-      .replace(/\r?\n\r?\nAdaptive Denoise Results[\s\S]*$/, "")
-      .replace(/\r?\n$/, ""),
-    header = [
+function buildDenoiseDetailReportCsv(results, cfg) {
+  const header = [
       "index",
       "inputFile",
       "presetId",
@@ -9166,7 +8941,7 @@ function replaceDenoiseReportCsv(csv, results, cfg) {
     lines = [
       "",
       "",
-      csvCell("Adaptive Denoise Results (De-click / Micro-burst / Spectral)"),
+      csvCell("11. Adaptive Denoise Results / detailed diagnostics (De-click / Micro-burst / Spectral)"),
       header.map(csvCell).join(","),
     ],
     presetId = cfg?.denoise?.presetId || "weak";
@@ -9238,17 +9013,17 @@ function replaceDenoiseReportCsv(csv, results, cfg) {
         formatReportNumber(row.denoiseOutputPeakDbfs, 2),
         row.denoiseWarnings || "",
       ]
+        .map((value, column) => row.status !== 'OK' && column > 2 ? '' : value)
         .map(csvCell)
         .join(","),
     );
   }
-  return base + "\r\n" + lines.join("\r\n") + "\r\n";
+  return lines.join("\r\n") + "\r\n";
 }
 
 function appendMaximizerReportCsv(csv, results, cfg) {
   const lines = [
-    ["Maximizer Results (final stage)"],
-    ["Configuration", JSON.stringify(cfg.maximizer || maximizerDefaults())],
+    ["12. Maximizer Results / detailed diagnostics (final stage)"],
     [
       "index",
       "inputFile",
@@ -9303,10 +9078,7 @@ function appendMaximizerReportCsv(csv, results, cfg) {
 }
 
 function buildBatchReportCsv(results, cfg) {
-  let csv = buildProcessingChainReportCsv(results, cfg);
-  csv = appendLegacyDenoiseReportCsv(csv, results);
-  csv = replaceDenoiseReportCsv(csv, results, cfg);
-  return appendMaximizerReportCsv(csv, results, cfg);
+  return buildProcessingChainReportCsv(results, cfg);
 }
 // Scalar report fields only: do not retain stage audio in batch result rows.
 function addBatchDenoiseReport(row, cfg, pipeline) {
@@ -10160,6 +9932,16 @@ function getBatchSettingsSnapshot() {
     cfg.maximizer = maximizerReadConfig();
     if (cfg.maximizer.enabled) cfg.saveMode = "leveled";
   }
+  if (!batchSnapshotReady.maximizer) return cfg; // Early startup summaries precede EQ initialization.
+  const selectedLabel = id => document.getElementById(id)?.selectedOptions?.[0]?.textContent?.trim() || '';
+  cfg.stagePresets = {
+    denoise: { id: cfg.denoise?.presetId, name: selectedLabel('denoisePresetSelect') },
+    eq: { id: temCorrectionOptionId, name: selectedLabel('tonalEqPresetSelect'), model: selectedLabel('tonalEqModel') },
+    leveler: { id: cfg.levelingPresetId, name: selectedLabel('presetSelect') },
+    compressor: { id: cfg.compressor?.presetId, name: selectedLabel('compressorPresetSelect') },
+    reverb: { id: cfg.reverbPresetId, name: cfg.reverbPreset },
+    maximizer: { id: cfg.maximizer?.presetId, name: selectedLabel('maximizerPreset') }
+  };
   return cfg;
 }
 
@@ -26304,7 +26086,7 @@ function v550StopAuditionForProcessing() {
 
 
 const APP_NAME='Envelope Mastering Suite';
-const APP_VERSION='1.5.0';
+const APP_VERSION='1.5.1';
 
 // Preserve the original installation order while controls are still being created.
 
@@ -28575,6 +28357,63 @@ auditionUiReady.maximizer=true;
 
 drawAllReady.maximizer=true;
 maximizerBuildUi();applyGlobalControlLocks();suiteStageAuditionUpdateUi();drawAll();
+// Persist settings only. Never retain audio, file handles, results or playback state.
+const LAST_SETTINGS_KEY = 'ems_last_settings_v1';
+function captureLastSettings() {
+  return {
+    version: 1, config: { ...captureProcessingConfigFromUi(),
+      normalizeTargetDb: +els.normalizeTargetDb.value,
+      loudnessTargetLufs: +els.loudnessTargetLufs.value,
+      outputMode: els.outputMode.value,
+      wavCompatibilityGuard: !!els.wavCompatibilityGuard.checked },
+    eqOption: temCorrectionOptionId,
+    output: Object.fromEntries(['batchSaveMode','batchOutputMode','batchPostfix','dither16Bit','ditherSeed'].map(id =>
+      [id, els[id]?.type === 'checkbox' ? els[id].checked : els[id]?.value]))
+  };
+}
+async function initializeLastSettings() {
+  const defaults = captureLastSettings();
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_SETTINGS_KEY) || 'null');
+    if (saved?.version === 1) {
+      // Reject incomplete/corrupt records before touching controls.
+      const valid = (value, example) => typeof example === 'number'
+        ? typeof value === 'number' && Number.isFinite(value)
+        : example && typeof example === 'object'
+          ? value && typeof value === 'object' && Object.keys(example).every(k => valid(value[k], example[k]))
+          : typeof value === typeof example;
+      if (!valid(saved.config, defaults.config)) throw new Error('Invalid saved settings');
+      await applyComparisonConfig(saved.config);
+      temCorrectionOptionId = temCorrectionFind(saved.eqOption) ? saved.eqOption : 'custom';
+      temCorrectionRender();
+      for (const id of Object.keys(defaults.output)) {
+        const el = els[id], value = saved.output?.[id];
+        if (!el || typeof value !== typeof defaults.output[id]) continue;
+        if (el.type === 'checkbox') el.checked = value;
+        else if (el.tagName !== 'SELECT' || [...el.options].some(o => o.value === value)) el.value = value;
+      }
+      applyGlobalControlLocks();
+      updateBatchButtons();
+      suiteUpdateStageDescriptions();
+    }
+  } catch (error) {
+    await applyComparisonConfig(defaults.config);
+    console.warn('Saved settings unavailable; using defaults.', error.message);
+  }
+  let timer;
+  const save = () => {
+    clearTimeout(timer);
+    try { localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(captureLastSettings())); }
+    catch (error) { console.warn('Could not save settings.', error.message); }
+  };
+  // Defer until the existing event handlers have synchronized all stage controls.
+  for (const type of ['input','change','click']) document.addEventListener(type, () => {
+    clearTimeout(timer); timer = setTimeout(save, 200);
+  });
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+}
+initializeLastSettings();
 </script>
 </script>
 </body>
