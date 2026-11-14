@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Envelope Mastering Suite v1.5.1</title>
+<title>Envelope Mastering Suite v1.5.2</title>
 <style>
 
 :root{--bg:#0f1117;--panel:#171b24;--panel2:#202633;--text:#e8ebf2;--muted:#a9b1c3;--accent:#77a7ff;--after:#8ee6c8;--gain:#ffd27a;--rawgain:#b9c4d8;--bad:#ff7e82;--up:#61d790;--line:#333b4d;--button:#2a67d8;--button2:#3a4255;--button3:#23845f;--tab:#111827;}
@@ -68,7 +68,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>Envelope Mastering Suite <span class="small">v1.5.1</span></h1>
+      <h1>Envelope Mastering Suite <span class="small">v1.5.2</span></h1>
       <div class="sub">適応型デノイズ、トーンEQ、短期ピーク包絡の補正、適応型コンプレッサー、マルチバンド・リバーブを一つの処理チェーンに統合し、音楽音源を公開用に整えるローカルHTMLアプリです。</div>
     </div>
     <div class="lang-box">
@@ -1261,9 +1261,9 @@ const REVERB_PRESETS = {
     labelJa: "標準2",
     labelEn: "Standard 2",
     descriptionJa:
-      "短く高密度なStudio空間で、明瞭さを保ちながら音源全体へ自然な一体感と適度な広がりを加えます。",
+      "短く高密度なStudio空間で、明瞭さを保ちながら音源全体へ自然な一体感と適度な広がりを加えます。 参考効果量：100",
     descriptionEn:
-      "Uses a short, dense studio space to add audible cohesion and balanced width while preserving clarity.",
+      "Uses a short, dense studio space to add audible cohesion and balanced width while preserving clarity. Reference effect amount: 100",
     roomProfile: "studio",
     lowXover: 230,
     highXover: 3800,
@@ -1283,9 +1283,9 @@ const REVERB_PRESETS = {
     labelJa: "微細な一体感2",
     labelEn: "Subtle Glue 2",
     descriptionJa:
-      "Studioの高密度な短い反射を薄く使い、残響を目立たせずに音像をまとめます。",
+      "Studioの高密度な短い反射を薄く使い、残響を目立たせずに音像をまとめます。 参考効果量：72",
     descriptionEn:
-      "Uses dense, short studio reflections to bind the mix without making the reverb itself prominent.",
+      "Uses dense, short studio reflections to bind the mix without making the reverb itself prominent. Reference effect amount: 72",
     roomProfile: "studio",
     lowXover: 250,
     highXover: 4000,
@@ -1305,9 +1305,9 @@ const REVERB_PRESETS = {
     labelJa: "ボーカルの空気感2",
     labelEn: "Vocal Air 2",
     descriptionJa:
-      "Plateの滑らかな人工残響で、低域を濁らせずに中高域へ明るい空気感と光沢を加えます。",
+      "Plateの滑らかな人工残響で、低域を濁らせずに中高域へ明るい空気感と光沢を加えます。 参考効果量：113",
     descriptionEn:
-      "Uses smooth plate reverb to add bright air and sheen to mids and highs while keeping lows clean.",
+      "Uses smooth plate reverb to add bright air and sheen to mids and highs while keeping lows clean. Reference effect amount: 113",
     roomProfile: "plate",
     lowXover: 220,
     highXover: 3600,
@@ -1327,9 +1327,9 @@ const REVERB_PRESETS = {
     labelJa: "広がり2",
     labelEn: "Wide Ambience 2",
     descriptionJa:
-      "Hallの遅れて密度が高まる反射を使い、原音の輪郭を保ちながら左右と奥行きへ明確に広げます。",
+      "Hallの遅れて密度が高まる反射を使い、原音の輪郭を保ちながら左右と奥行きへ明確に広げます。 参考効果量：159",
     descriptionEn:
-      "Uses a gradually building hall to expand width and depth while preserving the source attack.",
+      "Uses a gradually building hall to expand width and depth while preserving the source attack. Reference effect amount: 159",
     roomProfile: "hall",
     lowXover: 250,
     highXover: 4200,
@@ -1349,9 +1349,9 @@ const REVERB_PRESETS = {
     labelJa: "マイクロアンビエンス",
     labelEn: "Micro Ambience",
     descriptionJa:
-      "非常に短いStudio反射を初期反射中心で加え、明確な残響尾部を聞かせずに、乾いた音源へ小さな空間と接着感を与えます。",
+      "非常に短いStudio反射を初期反射中心で加え、明確な残響尾部を聞かせずに、乾いた音源へ小さな空間と接着感を与えます。 参考効果量：74",
     descriptionEn:
-      "Adds extremely short, early-focused studio reflections to give a dry mix compact ambience and cohesion without an obvious tail.",
+      "Adds extremely short, early-focused studio reflections to give a dry mix compact ambience and cohesion without an obvious tail. Reference effect amount: 74",
     roomProfile: "studio",
     lowXover: 260,
     highXover: 4500,
@@ -1371,9 +1371,9 @@ const REVERB_PRESETS = {
     labelJa: "奥行き",
     labelEn: "Depth",
     descriptionJa:
-      "暗めで幅を抑えたHall残響を音源の後方へ配置し、横へ広げすぎずに平面的なミックスへ前後方向の奥行きを加えます。",
+      "暗めで幅を抑えたHall残響を音源の後方へ配置し、横へ広げすぎずに平面的なミックスへ前後方向の奥行きを加えます。 参考効果量：144",
     descriptionEn:
-      "Places a darker, moderately narrow hall layer behind the source to add front-to-back depth without excessive lateral width.",
+      "Places a darker, moderately narrow hall layer behind the source to add front-to-back depth without excessive lateral width. Reference effect amount: 144",
     roomProfile: "hall",
     lowXover: 220,
     highXover: 3300,
@@ -1393,9 +1393,9 @@ const REVERB_PRESETS = {
     labelJa: "センター保持ワイド",
     labelEn: "Center Focus Wide",
     descriptionJa:
-      "低域と中央のDry定位を保ちながら、Plateの中高域Wetだけを大きく左右へ展開し、中心像を崩さず外周へ広がりを加えます。",
+      "低域と中央のDry定位を保ちながら、Plateの中高域Wetだけを大きく左右へ展開し、中心像を崩さず外周へ広がりを加えます。 参考効果量：119",
     descriptionEn:
-      "Keeps the dry center and lows stable while spreading only the plate-based mid/high ambience around the outside of the mix.",
+      "Keeps the dry center and lows stable while spreading only the plate-based mid/high ambience around the outside of the mix. Reference effect amount: 119",
     roomProfile: "plate",
     lowXover: 280,
     highXover: 4200,
@@ -1415,9 +1415,9 @@ const REVERB_PRESETS = {
     labelJa: "暖かい空間",
     labelEn: "Warm Space",
     descriptionJa:
-      "短く暗いRoom反射を低中域中心に加え、明るさを増やさずに薄い音源へ温かい体積感と近い室内感を与えます。",
+      "短く暗いRoom反射を低中域中心に加え、明るさを増やさずに薄い音源へ温かい体積感と近い室内感を与えます。 参考効果量：138",
     descriptionEn:
-      "Uses short, dark room reflections centered on the low mids to add warm body and close-room volume without extra brightness.",
+      "Uses short, dark room reflections centered on the low mids to add warm body and close-room volume without extra brightness. Reference effect amount: 138",
     roomProfile: "room",
     lowXover: 300,
     highXover: 3200,
@@ -1437,9 +1437,9 @@ const REVERB_PRESETS = {
     labelJa: "ライブハウス2",
     labelEn: "Live House 2",
     descriptionJa:
-      "Roomの近い初期反射を中心に、短くタイトなライブハウスらしい会場感を加えます。",
+      "Roomの近い初期反射を中心に、短くタイトなライブハウスらしい会場感を加えます。 参考効果量：199",
     descriptionEn:
-      "Uses close room reflections to create a short, tight, compact live-house character.",
+      "Uses close room reflections to create a short, tight, compact live-house character. Reference effect amount: 199",
     roomProfile: "room",
     lowXover: 250,
     highXover: 4000,
@@ -1459,9 +1459,9 @@ const REVERB_PRESETS = {
     labelJa: "ホール2",
     labelEn: "Hall 2",
     descriptionJa:
-      "Hallプロファイルの滑らかな密度上昇と長い後期残響で、バラードやピアノ、ストリングスを自然な大ホールへ配置します。",
+      "Hallプロファイルの滑らかな密度上昇と長い後期残響で、バラードやピアノ、ストリングスを自然な大ホールへ配置します。 参考効果量：220",
     descriptionEn:
-      "Places ballads, piano, and strings in a natural large hall with a smooth buildup and long tail.",
+      "Places ballads, piano, and strings in a natural large hall with a smooth buildup and long tail. Reference effect amount: 220",
     roomProfile: "hall",
     lowXover: 230,
     highXover: 3800,
@@ -1481,9 +1481,9 @@ const REVERB_PRESETS = {
     labelJa: "スタジアム",
     labelEn: "Stadium",
     descriptionJa:
-      "疎で遅い初期反射と長い後期残響で、大規模なスタジアム空間を作ります。",
+      "疎で遅い初期反射と長い後期残響で、大規模なスタジアム空間を作ります。 参考効果量：265",
     descriptionEn:
-      "Creates a large stadium space with sparse reflections and a long tail.",
+      "Creates a large stadium space with sparse reflections and a long tail. Reference effect amount: 265",
     roomProfile: "stadium",
     lowXover: 220,
     highXover: 3600,
@@ -1503,9 +1503,9 @@ const REVERB_PRESETS = {
     labelJa: "大聖堂",
     labelEn: "Cathedral",
     descriptionJa:
-      "Churchの遅い主要反射と非常に長い後期残響で、巨大な石造大聖堂を明確に演出します。",
+      "Churchの遅い主要反射と非常に長い後期残響で、巨大な石造大聖堂を明確に演出します。 参考効果量：289",
     descriptionEn:
-      "Uses delayed reflections and a very long church tail to create an unmistakable stone-cathedral space.",
+      "Uses delayed reflections and a very long church tail to create an unmistakable stone-cathedral space. Reference effect amount: 289",
     roomProfile: "church",
     lowXover: 220,
     highXover: 3600,
@@ -1525,9 +1525,9 @@ const REVERB_PRESETS = {
     labelJa: "密室",
     labelEn: "Close Chamber",
     descriptionJa:
-      "極端に近く強い初期反射と短い暗い残響をまとわせ、壁が目前に迫るような狭く圧迫感のある密閉空間を演出します。特殊効果向けです。",
+      "極端に近く強い初期反射と短い暗い残響をまとわせ、壁が目前に迫るような狭く圧迫感のある密閉空間を演出します。特殊効果向けです。 参考効果量：178",
     descriptionEn:
-      "Wraps the source in extremely close, strong early reflections and a short dark tail, creating an obviously cramped and pressurized enclosed space.",
+      "Wraps the source in extremely close, strong early reflections and a short dark tail, creating an obviously cramped and pressurized enclosed space. Reference effect amount: 178",
     roomProfile: "studio",
     lowXover: 300,
     highXover: 3900,
@@ -1547,9 +1547,9 @@ const REVERB_PRESETS = {
     labelJa: "背後の大空間",
     labelEn: "Vast Rear Space",
     descriptionJa:
-      "原音を手前に残し、長いプリディレイの後から巨大で幅広い残響だけを背後へ展開します。前方の明瞭さと非現実的な後方空間を強く対比させる特殊効果です。",
+      "原音を手前に残し、長いプリディレイの後から巨大で幅広い残響だけを背後へ展開します。前方の明瞭さと非現実的な後方空間を強く対比させる特殊効果です。 参考効果量：231",
     descriptionEn:
-      "Keeps the dry source forward, then unfolds a huge, very wide tail after a long predelay, strongly contrasting frontal clarity with an unreal space behind it.",
+      "Keeps the dry source forward, then unfolds a huge, very wide tail after a long predelay, strongly contrasting frontal clarity with an unreal space behind it. Reference effect amount: 231",
     roomProfile: "church",
     lowXover: 260,
     highXover: 3500,
@@ -1567,21 +1567,16 @@ const REVERB_PRESETS = {
   },
 };
 
+// Reference effect amount: round(100 * 2 ** ((Wet/Dry dB - standard dB) / 10)).
+// Measured with song_sample.wav (30.0466 s), EMS 1.5.1. Standard 2 = 100.
+// Display-only reference, not a wet percentage or a universal perceptual measurement.
+// Category membership is unchanged; order within each category is weakest first.
 const REVERB_PRESET_GROUPS = [
   {
     id: "mastering",
     labelJa: "マスタリング・スペース",
     labelEn: "Mastering Space",
-    keys: [
-      "standard",
-      "subtle",
-      "vocal",
-      "wide",
-      "micro",
-      "depth",
-      "centerWide",
-      "warm",
-    ],
+    keys: ["subtle", "micro", "standard", "vocal", "centerWide", "warm", "depth", "wide"],
   },
   {
     id: "creative",
@@ -10077,6 +10072,7 @@ function applyEqPrimaryControls(config, markDirty = false) {
   ])
     if (els[id]) els[id].value = String(value);
   if (els.tonalEqModel) els.tonalEqModel.value = cfg.modelId;
+  if (els.suiteFlowEqModel) els.suiteFlowEqModel.value = cfg.modelId;
   if (els.tonalEqResidualEnabled)
     els.tonalEqResidualEnabled.checked = cfg.residualEnabled;
   temResidualOverrides = cfg.residualBandsOverride;
@@ -13115,18 +13111,54 @@ function maximizerValidatePresets(records) {
   });
 }
 
+let maximizerStoredPresets;
+let maximizerPresetRecoveryNeeded = false;
+function maximizerLoadPresets() {
+  maximizerUserPresets = [];
+  try {
+    maximizerStoredPresets = localStorage.getItem(MAXIMIZER_PRESET_STORAGE);
+    const records = JSON.parse(maximizerStoredPresets || "[]");
+    if (!Array.isArray(records) || records.length > 1000) throw new Error("Invalid preset library");
+    const ids = new Set();
+    for (const record of records) {
+      try {
+        const [preset] = maximizerValidatePresets([record]);
+        if (ids.has(preset.id)) throw new Error("Duplicate preset ID");
+        ids.add(preset.id);
+        maximizerUserPresets.push(preset);
+      } catch (_) {
+        maximizerPresetRecoveryNeeded = true;
+      }
+    }
+  } catch (error) {
+    maximizerPresetRecoveryNeeded = true;
+    console.warn("Could not read maximizer presets.", error.message);
+  }
+  if (maximizerPresetRecoveryNeeded) {
+    setStatus(maximizerText(
+      "一部のマキシマイザプリセットを復元できませんでした。元の保存データは保持しています。",
+      "Some maximizer presets could not be restored. Original storage is retained.",
+    ), "warn");
+  }
+}
+
 function maximizerPersistPresets() {
   try {
-    localStorage.setItem(
-      MAXIMIZER_PRESET_STORAGE,
-      JSON.stringify(maximizerUserPresets),
-    );
+    // Never replace an unreadable library or changes made in another open tab.
+    if (maximizerStoredPresets === undefined || localStorage.getItem(MAXIMIZER_PRESET_STORAGE) !== maximizerStoredPresets)
+      throw new Error("Preset storage unreadable or changed in another tab");
+    const next = JSON.stringify(maximizerValidatePresets(maximizerUserPresets));
+    if (maximizerPresetRecoveryNeeded && maximizerStoredPresets !== null)
+      localStorage.setItem(MAXIMIZER_PRESET_STORAGE + ".recovery", maximizerStoredPresets);
+    localStorage.setItem(MAXIMIZER_PRESET_STORAGE, next);
+    maximizerStoredPresets = next;
+    maximizerPresetRecoveryNeeded = false;
     return true;
   } catch (_) {
     setStatus(
       maximizerText(
-        "ブラウザへの保存に失敗しました。プリセット保存でファイルに書き出してください。",
-        "Browser storage failed. Export your presets to a file.",
+        "ブラウザへの保存に失敗したか、別タブで保存内容が変更されました。プリセットをファイルに書き出してから再読み込みしてください。",
+        "Browser storage failed or presets changed in another tab. Export your presets to a file, then reload.",
       ),
       "warn",
     );
@@ -13187,10 +13219,10 @@ async function maximizerImportPresets(file) {
   for (const p of imported) merged.set(p.id, p);
   if (merged.size > 1000) throw new Error("Too many presets");
   maximizerUserPresets = [...merged.values()];
-  maximizerPersistPresets();
+  const persisted = maximizerPersistPresets();
   maximizerSettings.presetId = "custom";
   maximizerRenderPresets();
-  setStatus(
+  if (persisted) setStatus(
     maximizerText(
       "プリセットを読み込みました。選択欄から適用できます。",
       "Presets imported. Select one to apply it.",
@@ -13930,13 +13962,10 @@ function maximizerRenderPresets() {
     const select = document.getElementById(id);
     if (!select) continue;
     select.replaceChildren();
-    for (const value of ["4", "5", "6", "7", "custom"]) {
+    for (const value of ["4", "5", "6", "7"]) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent =
-        value === "custom"
-          ? maximizerText("カスタム（未保存）", "Custom (unsaved)")
-          : maximizerText("マキシマイズ +", "Maximize +") + value + " dB";
+      option.textContent = maximizerText("マキシマイズ +", "Maximize +") + value + " dB";
       select.append(option);
     }
     if (maximizerUserPresets.length) {
@@ -13949,6 +13978,14 @@ function maximizerRenderPresets() {
         group.append(option);
       }
       select.append(group);
+    }
+    if (![...select.options].some(option => option.value === maximizerSettings.presetId)) {
+      maximizerSettings.presetId = "custom";
+      const option = document.createElement("option");
+      option.value = "custom";
+      option.disabled = true;
+      option.textContent = maximizerText("カスタム（未保存）", "Custom (unsaved)");
+      select.append(option);
     }
     select.value = maximizerSettings.presetId;
   }
@@ -13964,13 +14001,7 @@ function maximizerRenderPresets() {
 }
 
 function maximizerBuildPresetManager() {
-  try {
-    maximizerUserPresets = maximizerValidatePresets(
-      JSON.parse(localStorage.getItem(MAXIMIZER_PRESET_STORAGE) || "[]"),
-    );
-  } catch (_) {
-    maximizerUserPresets = [];
-  }
+  maximizerLoadPresets();
   const select = document.getElementById("maximizerPreset"),
     row = suiteNode("div", "preset-select-row");
   select.before(row);
@@ -26086,7 +26117,7 @@ function v550StopAuditionForProcessing() {
 
 
 const APP_NAME='Envelope Mastering Suite';
-const APP_VERSION='1.5.1';
+const APP_VERSION='1.5.2';
 
 // Preserve the original installation order while controls are still being created.
 
@@ -28373,19 +28404,33 @@ function captureLastSettings() {
 }
 async function initializeLastSettings() {
   const defaults = captureLastSettings();
+  let stored, recoveryNeeded = false;
   try {
-    const saved = JSON.parse(localStorage.getItem(LAST_SETTINGS_KEY) || 'null');
+    stored = localStorage.getItem(LAST_SETTINGS_KEY);
+    const saved = JSON.parse(stored || 'null');
     if (saved?.version === 1) {
-      // Reject incomplete/corrupt records before touching controls.
-      const valid = (value, example) => typeof example === 'number'
+      // An automatic residual EQ has no manual overrides (null); this is valid.
+      const valid = (value, example, key) => key === 'residualBandsOverride'
+        ? value === null || Array.isArray(value)
+        : typeof example === 'number'
         ? typeof value === 'number' && Number.isFinite(value)
         : example && typeof example === 'object'
-          ? value && typeof value === 'object' && Object.keys(example).every(k => valid(value[k], example[k]))
+          ? value && typeof value === 'object' && Array.isArray(value) === Array.isArray(example) && Object.keys(example).every(k => valid(value[k], example[k], k))
           : typeof value === typeof example;
-      if (!valid(saved.config, defaults.config)) throw new Error('Invalid saved settings');
-      await applyComparisonConfig(saved.config);
-      temCorrectionOptionId = temCorrectionFind(saved.eqOption) ? saved.eqOption : 'custom';
+      // A damaged section must not reset the other stages, including their ON/OFF.
+      const config = Object.fromEntries(Object.entries(defaults.config).map(([key, value]) => {
+        if (valid(saved.config?.[key], value, key)) return [key, saved.config[key]];
+        recoveryNeeded = true;
+        return [key, value];
+      }));
+      if (config.base !== saved.config?.base || config.shape !== saved.config?.shape) config.levelingPresetId = 'custom';
+      if (config.reverb !== saved.config?.reverb) config.reverbPresetId = 'custom';
+      // Restore the explicit snapshot, not the transient no-reference toggle memory.
+      temResidualEnabledBeforeNoReference = null;
+      await applyComparisonConfig(config);
+      temCorrectionOptionId = config.eq === saved.config?.eq && temCorrectionFind(saved.eqOption) ? saved.eqOption : 'custom';
       temCorrectionRender();
+      suiteSyncEqPreset();
       for (const id of Object.keys(defaults.output)) {
         const el = els[id], value = saved.output?.[id];
         if (!el || typeof value !== typeof defaults.output[id]) continue;
@@ -28395,16 +28440,42 @@ async function initializeLastSettings() {
       applyGlobalControlLocks();
       updateBatchButtons();
       suiteUpdateStageDescriptions();
+      if (recoveryNeeded) console.warn('Some saved settings were invalid; unaffected settings restored. Original storage retained.');
+    } else if (saved !== null) {
+      throw new Error('Unsupported saved settings');
     }
   } catch (error) {
+    recoveryNeeded = true;
     await applyComparisonConfig(defaults.config);
+    suiteSyncEqPreset();
     console.warn('Saved settings unavailable; using defaults.', error.message);
   }
   let timer;
+  // Timestamps/translated labels are not edits. A tab switch, audition or page close
+  // must not save startup defaults or overwrite a newer tab's settings.
+  const signature = value => JSON.stringify(value, (key, item) =>
+    key === 'capturedAt' || key === 'reverbPresetLabel' ? undefined : item);
+  let savedSignature = signature(captureLastSettings());
   const save = () => {
     clearTimeout(timer);
-    try { localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(captureLastSettings())); }
-    catch (error) { console.warn('Could not save settings.', error.message); }
+    const current = captureLastSettings(), nextSignature = signature(current);
+    if (nextSignature === savedSignature) return;
+    try {
+      if (stored === undefined || localStorage.getItem(LAST_SETTINGS_KEY) !== stored)
+        throw new Error('Storage unreadable or changed in another tab; reload before saving.');
+      if (recoveryNeeded && stored !== null)
+        localStorage.setItem(LAST_SETTINGS_KEY + '.recovery', stored);
+      const next = JSON.stringify(current);
+      localStorage.setItem(LAST_SETTINGS_KEY, next);
+      stored = next;
+      savedSignature = nextSignature;
+      recoveryNeeded = false;
+    } catch (error) {
+      console.warn('Could not save settings.', error.message);
+      setStatus(currentLang === 'en'
+        ? 'Settings could not be saved. Keep any needed presets in a file, then reload.'
+        : '設定を保存できませんでした。必要なプリセットをファイルに保存してから再読み込みしてください。', 'warn');
+    }
   };
   // Defer until the existing event handlers have synchronized all stage controls.
   for (const type of ['input','change','click']) document.addEventListener(type, () => {
